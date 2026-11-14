@@ -21,7 +21,10 @@ class ExtractTests(unittest.TestCase):
         self.assertFalse(result.ok)
 
     def test_extracts_text_from_pdf(self):
-        import fitz
+        try:
+            import fitz
+        except ImportError:
+            self.skipTest("PyMuPDF 未安装，跳过真实 PDF 提取测试")
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "resume.pdf"
