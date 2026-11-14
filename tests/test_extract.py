@@ -51,6 +51,12 @@ class ExtractTests(unittest.TestCase):
         self.assertEqual(profile.edu_score, 9)
         self.assertEqual(profile.skills, ["Python", "FastAPI", "Redis"])
 
+    def test_skill_matching_does_not_match_substrings(self):
+        profile = extract_profile("Django、Google Analytics、good communication")
+
+        self.assertIn("Django", profile.skills)
+        self.assertNotIn("Go", profile.skills)
+
     def test_empty_profile_returns_stable_defaults(self):
         profile = extract_profile("")
 

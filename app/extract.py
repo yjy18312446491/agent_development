@@ -158,7 +158,16 @@ def extract_education(text: str) -> tuple[str, int]:
 def extract_skills(text: str) -> List[str]:
     """Return vocabulary matches once each, preserving vocabulary order."""
     content = (text or "").lower()
-    return [skill for skill in SKILL_VOCABULARY if skill.lower() in content]
+    return [skill for skill in SKILL_VOCABULARY if _skill_present(content, skill)]
+
+
+def _skill_present(content: str, skill: str) -> bool:
+    """Match ASCII skill names as tokens and Chinese names as phrases."""
+    if any("\u4e00" <= char <= "\u9fff" for char in skill):
+        return skill.lower() in content
+
+    pattern = rf"(?<![a-z0-9_]){re.escape(skill.lower())}(?![a-z0-9_])"
+    return re.search(pattern, content, re.IGNORECASE) is not None
 
 
 def extract_profile(text: str, file_name: str = "") -> CandidateProfile:
