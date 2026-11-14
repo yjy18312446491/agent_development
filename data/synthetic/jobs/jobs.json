@@ -1,0 +1,26 @@
+[
+  {
+    "jd_id": "JD1",
+    "title": "后端开发工程师（中级）",
+    "min_years": 3.0,
+    "max_years": null,
+    "skills": ["Python", "FastAPI", "MySQL", "Redis"],
+    "raw_text": "岗位：后端开发工程师（中级）\n要求：Python、FastAPI、MySQL、Redis，三年以上后端开发经验。"
+  },
+  {
+    "jd_id": "JD2",
+    "title": "后端开发工程师（初级）",
+    "min_years": 0.0,
+    "max_years": 2.5,
+    "skills": ["Python", "Flask", "MySQL"],
+    "raw_text": "岗位：后端开发工程师（初级）\n要求：Python、Flask、MySQL，接受应届生和项目经验。"
+  },
+  {
+    "jd_id": "JD3",
+    "title": "前端开发工程师",
+    "min_years": 1.0,
+    "max_years": null,
+    "skills": ["JavaScript", "TypeScript", "Vue", "React"],
+    "raw_text": "岗位：前端开发工程师\n要求：JavaScript、TypeScript、Vue、React，具备页面开发经验。"
+  }
+]
