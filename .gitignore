@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime output
+*.db
+*.sqlite
+*.sqlite3
+out/
+logs/
+tmp/
+*.log
+
+# Local IDE and OS files
+.idea/
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+Thumbs.db
+Desktop.ini
+
+# Personal or raw recruitment data
+data/raw/
+data/private/
+data/real_resumes/
