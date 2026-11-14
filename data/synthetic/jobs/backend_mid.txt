@@ -1,0 +1,2 @@
+岗位：后端开发工程师（中级）
+要求：Python、FastAPI、MySQL、Redis，三年以上后端开发经验。
