@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import re
+from typing import Union
 
 
 @dataclass(frozen=True)
@@ -24,7 +25,7 @@ def clean_text(text: str) -> str:
     return "\n".join(line for line in lines if line).strip()
 
 
-def extract_pdf(pdf_path: str | Path) -> ExtractResult:
+def extract_pdf(pdf_path: Union[str, Path]) -> ExtractResult:
     """Extract text from a text-based PDF.
 
     The dependency is imported at the boundary so the rest of the application
