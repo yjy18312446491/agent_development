@@ -108,13 +108,28 @@ class GuardTests(unittest.TestCase):
             self.assertEqual(result.status, record["extract_status"], record["id"])
             self.assertEqual(guarded.status, record["guard_status"], record["id"])
             self.assertEqual(guarded.reason_code, record["reason_code"], record["id"])
-            if "profile_text_file" in record:
-                profile_text = (root / record["profile_text_file"]).read_text(encoding="utf-8")
-                profile = extract_profile(profile_text)
-                self.assertEqual(profile.name, record["name"], record["id"])
-                self.assertEqual(profile.years, record["years"], record["id"])
-                self.assertEqual(profile.education, record["education"], record["id"])
-                self.assertEqual(profile.skills, record["skills"], record["id"])
+
+    def test_synthetic_profile_sources_match_manifest(self):
+        root = Path(__file__).resolve().parents[1] / "data" / "synthetic"
+        manifest_path = root / "manifest.jsonl"
+        records = [json.loads(line) for line in manifest_path.read_text(encoding="utf-8").splitlines()]
+
+        profile_records = [record for record in records if "profile_text_file" in record]
+        self.assertGreater(len(profile_records), 0)
+        for record in profile_records:
+            profile_text = (root / record["profile_text_file"]).read_text(encoding="utf-8")
+            profile = extract_profile(profile_text)
+            self.assertEqual(profile.name, record["name"], record["id"])
+            self.assertEqual(profile.years, record["years"], record["id"])
+            self.assertEqual(profile.education, record["education"], record["id"])
+            self.assertEqual(profile.skills, record["skills"], record["id"])
+
+    def test_chinese_scan_prompt_is_currently_too_short(self):
+        result = guard_text(ExtractResult("请使用OCR识别该扫描件", "OK"))
+
+        self.assertFalse(result.passed)
+        self.assertEqual(result.reason_code, "TOO_SHORT")
+        self.assertIn("200", result.reason)
 
 
 def _normal_resume_text():

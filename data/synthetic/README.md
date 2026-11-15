@@ -2,6 +2,8 @@
 
 这里的 PDF、岗位文本和标注全部使用虚构内容，供抽取层和文本质量闸门回归测试。
 
+PDF 夹具使用英文正文，保证 PyMuPDF 在干净环境中不依赖本机中文字体也能稳定提取文字。中文姓名、学历、年限和技能画像使用同目录的 `.txt` 源文件回归，manifest 中的 `profile_text_file` 指向对应源文件。PDF 测试只验收 `extract_status`、`guard_status` 和 `reason_code`。
+
 ## 目录
 
 - `resumes/` 包含正常、空文件、图片型、损坏、过短、教育经历、项目经历和混合经历样本。

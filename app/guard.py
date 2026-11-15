@@ -27,7 +27,7 @@ class GuardResult:
     letter_count: int = 0
 
 
-def guard_text(extract: ExtractResult) -> GuardResult:
+def guard_text(extract: Optional[ExtractResult]) -> GuardResult:
     """Classify extracted text as usable or requiring manual review.
 
     The gate only evaluates extraction quality. It does not inspect candidate
