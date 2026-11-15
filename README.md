@@ -4,9 +4,9 @@
 
 ## 当前状态
 
-- 当前 Python 功能分支已实现 PDF 文本与简历字段抽取、文本质量闸门、基于合成 JD 的确定性岗位路由、五维规则评分和评分结果校验，均有回归测试。
+- 当前 Python 功能分支已实现单份 PDF 筛选入口，串起文本抽取、质量闸门、岗位路由、五维评分和结果校验，均有回归测试。
 - 当前总分包含离线 Mock 项目分，默认项目分为 0。真实模型接入后的评分效果将用评测集单独验证。
-- 统一筛选入口、真实 LLM 项目评分、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
+- 批量筛选、真实 LLM 项目评分、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -40,8 +40,18 @@ agent开发/
 
 仓库只使用合成或脱敏数据，不提交 API Key、个人简历、手机号、邮箱、平台内部链接和运行数据库。对外发布前需要完成测试、评测口径说明和干净环境运行验证。
 
+## 运行单份筛选
+
+在仓库根目录用项目环境运行以下示例。英文合成 PDF 的默认结果为 `JD1 / SCORED / 60`，项目分使用离线 Mock。
+
+```python
+from app.screen import screen_one
+
+result = screen_one("data/synthetic/resumes/S001_normal_backend.pdf")
+print(result.score.jd_id, result.score.status, result.score.total)
+```
+
 ## 下一步
 
-1. 实现统一筛选入口，串起抽取、闸门、路由、评分和结果校验。
-2. 建立可复跑的离线评测，再接入真实模型和向量检索。
-3. 实现结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
+1. 建立可复跑的离线评测，再接入真实模型和向量检索。
+2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
