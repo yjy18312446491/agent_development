@@ -1,6 +1,6 @@
 """Deterministic job routing based on a candidate profile and job config."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import re
@@ -32,6 +32,7 @@ class JobPosting:
     skills: List[str]
     max_years: Optional[float] = None
     raw_text: str = ""
+    bonus_skills: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,7 @@ def load_jobs(jobs_dir: Optional[Union[str, Path]] = None) -> List[JobPosting]:
                 ),
                 skills=[str(skill) for skill in raw_job["skills"]],
                 raw_text=str(raw_job.get("raw_text", "")),
+                bonus_skills=[str(skill) for skill in raw_job.get("bonus_skills") or []],
             )
         )
     return jobs
