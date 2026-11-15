@@ -176,8 +176,8 @@ class ScoreTests(unittest.TestCase):
         route = route_profile(text, profile, self.jobs)
         result = score_candidate(text, profile, guard, route, self.jobs)
         self.assertEqual((guard.status, route.jd_id, result.status), ("PASS", "JD2", "SCORED"))
-        scores = result.scores
-        self.assertEqual(result.total, scores.skill + scores.project + scores.years + scores.education + scores.bonus)
+        self.assertEqual(result.scores, ScoreBreakdown(skill=27, project=0, years=15, education=7, bonus=3))
+        self.assertEqual(result.total, 52)
         self.assertEqual(result.project_source, "mock")
 
     def test_short_chinese_resume_is_reviewed(self):
