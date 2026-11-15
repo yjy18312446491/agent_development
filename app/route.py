@@ -14,11 +14,11 @@ MIN_HIT_RATIO = 0.30
 _DIRECTION_SIGNALS = {
     "backend": ("后端", "backend", "python", "fastapi", "flask", "django", "java", "spring"),
     "frontend": ("前端", "frontend", "vue", "react", "webpack", "typescript", "css"),
-    "testing": ("测试", "selenium", "test case", "自动化测试"),
+    "testing": ("测试用例", "selenium", "test case", "自动化测试"),
     "product": ("prd", "原型", "产品经理"),
     "operations": ("社群运营", "活动策划", "运营"),
     "data": ("数据分析", "tableau"),
-    "sre": ("运维", "告警", "监控", "kubernetes"),
+    "sre": ("运维", "告警"),
 }
 
 
@@ -54,10 +54,15 @@ def load_jobs(jobs_dir: Optional[Union[str, Path]] = None) -> List[JobPosting]:
         raw_jobs = json.load(handle)
 
     jobs = []
+    seen_ids = set()
     for raw_job in raw_jobs:
+        jd_id = str(raw_job["jd_id"])
+        if jd_id in seen_ids:
+            raise ValueError(f"重复的岗位 ID：{jd_id}")
+        seen_ids.add(jd_id)
         jobs.append(
             JobPosting(
-                jd_id=str(raw_job["jd_id"]),
+                jd_id=jd_id,
                 title=str(raw_job["title"]),
                 min_years=float(raw_job["min_years"]),
                 max_years=(
@@ -83,6 +88,8 @@ def route_profile(
         skill_ratio = _skill_ratio(profile.skills, job.skills)
         if _direction_conflict(text, job, skill_ratio):
             continue
+        if job.max_years is not None and profile.years > job.max_years:
+            continue
         years_fit = _years_fit(profile.years, job.min_years, job.max_years)
         combined = 0.4 * skill_ratio + 0.6 * years_fit
         candidates.append((combined, skill_ratio, years_fit, job))
@@ -96,12 +103,16 @@ def route_profile(
     )
     if skill_ratio < MIN_HIT_RATIO:
         return _unmatched(
-            f"最佳岗位技能命中率 {skill_ratio:.2f} 低于 {MIN_HIT_RATIO:.2f}"
+            f"最佳岗位技能命中率 {skill_ratio:.2f} 低于 {MIN_HIT_RATIO:.2f}，"
+            "combined 是路由指标，不是五维总分",
+            skill_ratio=skill_ratio,
+            years_fit=years_fit,
+            combined=combined,
         )
 
     reason = (
         f"{job.title}：技能命中率 {skill_ratio:.2f}，"
-        f"年限契合度 {years_fit:.2f}，综合值 {combined:.2f}"
+        f"年限契合度 {years_fit:.2f}，路由综合值 {combined:.2f}（不是五维总分）"
     )
     return RouteResult(
         jd_id=job.jd_id,
@@ -177,12 +188,17 @@ def _contains_term(text: str, term: str) -> bool:
     return re.search(pattern, text, re.IGNORECASE) is not None
 
 
-def _unmatched(reason: str) -> RouteResult:
+def _unmatched(
+    reason: str,
+    skill_ratio: float = 0.0,
+    years_fit: float = 0.0,
+    combined: float = 0.0,
+) -> RouteResult:
     return RouteResult(
         jd_id="UNMATCHED",
         jd_title="无匹配岗位",
-        skill_ratio=0.0,
-        years_fit=0.0,
-        combined=0.0,
+        skill_ratio=round(skill_ratio, 3),
+        years_fit=round(years_fit, 3),
+        combined=round(combined, 3),
         reason=reason,
     )
