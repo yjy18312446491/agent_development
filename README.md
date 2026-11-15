@@ -6,6 +6,7 @@
 
 - 当前 Python 功能分支已实现单份 PDF 筛选入口，串起文本抽取、质量闸门、岗位路由、五维评分和结果校验，均有回归测试。
 - 当前总分包含离线 Mock 项目分，默认项目分为 0。真实模型接入后的评分效果将用评测集单独验证。
+- 已有 10 份合成 PDF、13 个场景的离线 Mock 回归基线，覆盖正常评分、人工复核和打分回调异常。详见 [评测说明](eval/README.md)。
 - 批量筛选、真实 LLM 项目评分、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
@@ -53,5 +54,5 @@ print(result.score.jd_id, result.score.status, result.score.total)
 
 ## 下一步
 
-1. 建立可复跑的离线评测，再接入真实模型和向量检索。
+1. 接入真实模型项目分，再用带人工标注的项目证据评估模型表现。
 2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。

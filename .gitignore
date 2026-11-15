@@ -20,6 +20,7 @@ out/
 logs/
 tmp/
 *.log
+/eval/reports/
 
 # Local IDE and OS files
 .idea/
