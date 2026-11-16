@@ -36,4 +36,19 @@
 | 个人贡献 | 未说明本人参与 | 明确参与但未说明职责 | 说明具体职责或行动 | 给出本人技术决策、取舍及负责范围 |
 | 结果证据 | 无结果 | 仅声称完成或改善 | 有可描述的交付、验证或团队结果 | 有具体可追溯的验收方式或前后对比 |
 
-非零分需要可在项目片段中找到的非空引证。空片段直接得 0 分。有片段时，假客户端返回结构化 JSON，适配层校验并求和。当前测试验证的是数据合同和复核流程，模型能否按标准理解证据或忽略片段内指令留待真实联调。现有 PDF 评测和项目分标注各自维护。
+非零分需要可在项目片段中找到的非空引证。空片段直接得 0 分。有片段时，客户端返回结构化 JSON，适配层校验并求和。假客户端单测验证数据合同和复核流程。现有 PDF 评测和项目分标注各自维护。
+
+## DeepSeek 真实冒烟测试
+
+下面第一条只列出会试跑的固定场景。第二条显式启用真实调用，会产生 API 用量。入口只读取冻结标注中的 `full_30`、`tools_only`、`jailbreak_tools` 三条合成片段和对应岗位要求。
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_deepseek_pilot
+.\.venv\Scripts\python.exe -m eval.run_deepseek_pilot --live
+```
+
+根目录本地 `.env` 需要设置 `LLM_PROVIDER=deepseek`、`LLM_BASE_URL=https://api.deepseek.com`、`LLM_MODEL=deepseek-flash` 和 `LLM_API_KEY`。项目用标准库发 HTTPS 请求。每条最多重试一次，整轮最多 4 次请求。默认离线评测和筛选流程不读这份配置。
+
+本地报告为 `eval/reports/deepseek-smoke.json`。有效响应与人工标注完全一致时退出 `0`，有响应失败或标注差异时退出 `1`，配置或写报告出错时退出 `2`。报告里的费用按 [DeepSeek 官方峰时未命中缓存价](https://api-docs.deepseek.com/quick_start/pricing/) 和返回的可计量 token 估算，账单金额以控制台为准。
+
+首轮共有 3 次请求，三项分值均与标注一致，三条总分依次是 `30、3、3`。这是冒烟结果，完整标注集和真实招聘场景的表现仍需单独评估。
