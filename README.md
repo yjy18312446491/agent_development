@@ -7,8 +7,8 @@
 - 当前 Python 功能分支已实现单份 PDF 筛选入口，串起文本抽取、质量闸门、岗位路由、五维评分和结果校验，均有回归测试。
 - 当前总分包含离线 Mock 项目分，默认项目分为 0。真实模型接入后的评分效果将用评测集单独验证。
 - 已有 10 份合成 PDF、13 个场景的离线 Mock 回归基线，覆盖正常评分、人工复核和打分回调异常。详见 [评测说明](eval/README.md)。
-- 项目分适配层配有 12 条合成项目片段的固定标注。DeepSeek 独立冒烟入口已用其中 3 条完成真实联调，默认单份筛选仍采用 Mock。详见 [评测说明](eval/README.md#deepseek-真实冒烟测试)。
-- 真实项目分的完整评测与生产接入，以及批量筛选、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
+- DeepSeek 项目分完成首轮 12 条合成片段评测。空片段本地跳过，11 条模型响应均合法，8 条三项分值与人工标注完全一致。默认单份筛选仍采用 Mock。详见 [评测说明](eval/README.md#deepseek-完整评测)。
+- 真实项目分的生产接入，以及批量筛选、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -55,5 +55,5 @@ print(result.score.jd_id, result.score.status, result.score.total)
 
 ## 下一步
 
-1. 审核已通过假 HTTP 测试的完整评测入口，再用全部 12 条合成标注运行真实评测。
+1. 复核真实评测中的三条分差，再评估项目片段提取和模型评分的接入方式。
 2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
