@@ -94,7 +94,8 @@ class DeepSeekTests(unittest.TestCase):
         with patch.object(pilot.DeepSeekConfig, "from_env_file") as config, patch.object(
             pilot, "DeepSeekClient"
         ) as client:
-            self.assertEqual(pilot.main([]), 0)
+            for argv in ([], ["--all"]):
+                self.assertEqual(pilot.main(argv), 0)
         config.assert_not_called()
         client.assert_not_called()
 
@@ -117,3 +118,92 @@ class DeepSeekTests(unittest.TestCase):
         self.assertEqual(report["requests"], 1)
         self.assertEqual(report["cases"][0]["status"], "REVIEW")
         self.assertEqual(report["not_run"], list(pilot.SMOKE_IDS[1:]))
+
+    def run_fake_cli(self, argv, send):
+        """Run the CLI against a fake transport and temporary reports."""
+        with TemporaryDirectory() as directory:
+            smoke = Path(directory) / "deepseek-smoke.json"
+            full = Path(directory) / "deepseek-all.json"
+            smoke.write_text("original smoke", encoding="utf-8")
+            with patch.object(pilot, "REPORT", smoke), patch.object(pilot, "FULL_REPORT", full), patch.object(
+                pilot.DeepSeekConfig, "from_env_file", return_value=DeepSeekConfig("local-stub")
+            ), patch("app.deepseek_client.build_opener", return_value=Mock(open=send)), patch(
+                "app.deepseek_client.sleep"
+            ):
+                code = pilot.main(argv)
+            if "--all" in argv:
+                self.assertEqual(smoke.read_text(encoding="utf-8"), "original smoke")
+                output = full
+            else:
+                self.assertFalse(full.exists())
+                output = smoke
+            return code, json.loads(output.read_text(encoding="utf-8"))
+
+    def test_full_cli_skips_empty_and_reports_drift_and_invalid_response(self):
+        zero = json.dumps({name: {"points": 0, "evidence": ""} for name in pilot.DIMENSIONS})
+        send = Mock(side_effect=[reply("invalid")] + [reply(zero) for _ in range(10)])
+        code, report = self.run_fake_cli(["--live", "--all"], send)
+        self.assertEqual(code, 0)
+        self.assertFalse(report["aborted"])
+        self.assertEqual((report["requests"], report["requested_nonempty"], send.call_count), (11, 11, 11))
+        self.assertEqual((report["skipped_local"], report["valid_responses"],
+                          report["invalid_responses"], report["metrics_denominator"]), (1, 10, 1, 10))
+        skipped, invalid, drift = report["cases"][:3]
+        self.assertEqual((skipped["status"], skipped["actual_total"], skipped["requests"]),
+                         ("SKIPPED", 0, 0))
+        self.assertTrue(skipped["skip_client"])
+        self.assertEqual((invalid["status"], invalid["failure"]), ("REVIEW", "INVALID_PROJECT_RESPONSE"))
+        self.assertEqual((drift["status"], drift["matched"]), ("SCORED", False))
+        self.assertEqual(report["project_mae"], 15.5)
+        self.assertEqual(report["exact_matches"], 1)
+        self.assertEqual(report["dimension_matches"], {"relevance": 1, "contribution": 3, "result": 4})
+        self.assertEqual(report["cases"][8]["job_id"], "JD2")
+        self.assertIsNone(report["instruction_pairs"][0]["delta"])
+        self.assertEqual(report["instruction_pairs"][1]["delta"],
+                         {"relevance": 0, "contribution": 0, "result": 0, "total": 0})
+        payload = json.dumps(report)
+        self.assertNotIn("FastAPI", payload)
+        self.assertNotIn("local-stub", payload)
+        self.assertNotIn("evidence", payload)
+
+    def test_full_cli_reserves_all_first_attempts_after_two_retries(self):
+        zero = json.dumps({name: {"points": 0, "evidence": ""} for name in pilot.DIMENSIONS})
+        send = Mock(side_effect=[
+            http_error(429), reply(zero), http_error(429), reply(zero), http_error(429),
+            *[reply(zero) for _ in range(8)],
+        ])
+        code, report = self.run_fake_cli(["--live", "--all"], send)
+        self.assertEqual(code, 0)
+        self.assertEqual((report["requests"], report["retries"], send.call_count), (13, 2, 13))
+        self.assertEqual([entry["requests"] for entry in report["cases"]], [0, 2, 2] + [1] * 9)
+        self.assertEqual(report["not_run"], [])
+        self.assertEqual(report["cases"][3]["http_status"], 429)
+        self.assertEqual(report["cases"][-1]["status"], "SCORED")
+        self.assertEqual(len(report["instruction_pairs"]), 2)
+        self.assertTrue(all(pair["delta"] is not None for pair in report["instruction_pairs"]))
+
+    def test_full_cli_returns_one_on_auth_failure_and_preserves_partial_report(self):
+        send = Mock(side_effect=http_error(401))
+        code, report = self.run_fake_cli(["--live", "--all"], send)
+        self.assertEqual(code, 1)
+        self.assertTrue(report["aborted"])
+        self.assertEqual([entry["status"] for entry in report["cases"]], ["SKIPPED", "REVIEW"])
+        self.assertEqual(report["not_run"], report["requested_cases"][2:])
+        send.assert_called_once()
+
+    def test_smoke_cli_keeps_three_case_order_and_four_request_limit(self):
+        zero = json.dumps({name: {"points": 0, "evidence": ""} for name in pilot.DIMENSIONS})
+        send = Mock(side_effect=[reply(zero) for _ in range(3)])
+        code, report = self.run_fake_cli(["--live"], send)
+        self.assertEqual(code, 1)
+        self.assertEqual(report["requested_cases"], list(pilot.SMOKE_IDS))
+        self.assertEqual((report["request_limit"], report["requests"], send.call_count), (4, 3, 3))
+
+    def test_instruction_delta_is_instructed_minus_plain_by_dimension(self):
+        plain = {"case_id": "tools_only", "actual": {"relevance": 3, "contribution": 0, "result": 0},
+                 "actual_total": 3}
+        instructed = {"case_id": "jailbreak_tools",
+                      "actual": {"relevance": 0, "contribution": 7, "result": 0}, "actual_total": 7}
+        pairs = pilot._instruction_deltas([plain, instructed])
+        self.assertEqual(pairs[0]["delta"], {"relevance": -3, "contribution": 7, "result": 0, "total": 4})
+        self.assertIsNone(pairs[1]["delta"])

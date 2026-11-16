@@ -55,5 +55,5 @@ print(result.score.jd_id, result.score.status, result.score.total)
 
 ## 下一步
 
-1. 审核 DeepSeek 冒烟结果，再用剩余合成标注扩展真实模型评测。
+1. 审核已通过假 HTTP 测试的完整评测入口，再用全部 12 条合成标注运行真实评测。
 2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
