@@ -1,5 +1,6 @@
 """Exercise the client boundary and pilot without remote requests."""
 
+from hashlib import sha256
 from io import BytesIO
 import json
 from pathlib import Path
@@ -8,7 +9,9 @@ import unittest
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
-from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError
+from app.deepseek_client import (
+    DeepSeekClient, DeepSeekConfig, DeepSeekError, PROJECT_SCORER_PROMPT_V2, _INSTRUCTIONS,
+)
 from app.project_scorer import score_project
 from app.route import load_jobs
 from eval import run_deepseek_pilot as pilot
@@ -99,6 +102,25 @@ class DeepSeekTests(unittest.TestCase):
         config.assert_not_called()
         client.assert_not_called()
 
+    def test_v2_preview_lists_all_cases_without_reading_config_or_opening_http(self):
+        with patch.object(pilot.DeepSeekConfig, "from_env_file") as config, patch.object(
+            pilot, "DeepSeekClient"
+        ) as client, patch("builtins.print") as printed:
+            self.assertEqual(pilot.main(["--all", "--prompt-version", "v2"]), 0)
+        config.assert_not_called()
+        client.assert_not_called()
+        output = printed.call_args.args[0]
+        self.assertIn("zero network requests", output)
+        ids = output.split("Full suite: ")[1].split(", ")
+        self.assertEqual(len(ids), 15)
+        self.assertIn("empty", ids)
+        self.assertEqual(ids[-3:], list(pilot.V2_EXTRA_IDS))
+
+    def test_original_labels_are_frozen(self):
+        content = pilot.LABELS.read_bytes().replace(b"\r\n", b"\n")
+        self.assertEqual(sha256(content).hexdigest(),
+                         "b9c59b5cf05224a3a70d05520f112daaeb77d7dca2de3c6c88e3fd96f63fc56c")
+
     def test_pilot_records_label_drift_without_persisting_raw_response(self):
         case = {"case_id": "example", "jd_id": self.job.jd_id, "snippet": "熟悉 FastAPI",
                 "relevance": 3, "contribution": 0, "result": 0, "total": 3}
@@ -124,15 +146,23 @@ class DeepSeekTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             smoke = Path(directory) / "deepseek-smoke.json"
             full = Path(directory) / "deepseek-all.json"
+            v2 = Path(directory) / "deepseek-v2.json"
             smoke.write_text("original smoke", encoding="utf-8")
-            with patch.object(pilot, "REPORT", smoke), patch.object(pilot, "FULL_REPORT", full), patch.object(
+            if "v2" in argv:
+                full.write_text("original full", encoding="utf-8")
+            with patch.multiple(pilot, REPORT=smoke, FULL_REPORT=full, V2_REPORT=v2), patch.object(
                 pilot.DeepSeekConfig, "from_env_file", return_value=DeepSeekConfig("local-stub")
             ), patch("app.deepseek_client.build_opener", return_value=Mock(open=send)), patch(
                 "app.deepseek_client.sleep"
             ):
                 code = pilot.main(argv)
-            if "--all" in argv:
+            if "v2" in argv:
                 self.assertEqual(smoke.read_text(encoding="utf-8"), "original smoke")
+                self.assertEqual(full.read_text(encoding="utf-8"), "original full")
+                output = v2
+            elif "--all" in argv:
+                self.assertEqual(smoke.read_text(encoding="utf-8"), "original smoke")
+                self.assertFalse(v2.exists())
                 output = full
             else:
                 self.assertFalse(full.exists())
@@ -144,6 +174,11 @@ class DeepSeekTests(unittest.TestCase):
         send = Mock(side_effect=[reply("invalid")] + [reply(zero) for _ in range(10)])
         code, report = self.run_fake_cli(["--live", "--all"], send)
         self.assertEqual(code, 0)
+        self.assertEqual(report["prompt_version"], "project-score-v1")
+        self.assertEqual(len(report["requested_cases"]), 12)
+        self.assertNotIn("v2_comparison", report)
+        self.assertEqual(json.loads(send.call_args_list[0].args[0].data)["messages"][0]["content"],
+                         _INSTRUCTIONS)
         self.assertFalse(report["aborted"])
         self.assertEqual((report["requests"], report["requested_nonempty"], send.call_count), (11, 11, 11))
         self.assertEqual((report["skipped_local"], report["valid_responses"],
@@ -165,6 +200,60 @@ class DeepSeekTests(unittest.TestCase):
         self.assertNotIn("FastAPI", payload)
         self.assertNotIn("local-stub", payload)
         self.assertNotIn("evidence", payload)
+
+    def test_v2_sends_extended_prompt_and_reports_original_and_contrast_scores(self):
+        zero = json.dumps({name: {"points": 0, "evidence": ""} for name in pilot.DIMENSIONS})
+        send = Mock(side_effect=[reply(zero) for _ in range(14)])
+        code, report = self.run_fake_cli(["--live", "--all", "--prompt-version", "v2"], send)
+        self.assertEqual(code, 0)
+        self.assertEqual(report["prompt_version"], "project-score-v2")
+        self.assertEqual(len(report["requested_cases"]), 15)
+        self.assertEqual((report["valid_responses"], report["skipped_local"], send.call_count), (14, 1, 14))
+        self.assertEqual(report["cases"][0]["case_id"], "empty")
+        self.assertEqual(report["cases"][0]["requests"], 0)
+        self.assertEqual(report["extra_labels_sha256"], sha256(pilot.V2_EXTRA_LABELS.read_bytes()).hexdigest())
+        system = json.loads(send.call_args_list[0].args[0].data)["messages"][0]["content"]
+        self.assertEqual(system, PROJECT_SCORER_PROMPT_V2)
+        self.assertTrue(system.startswith(_INSTRUCTIONS))
+        for rule in ("我 / 本人 / 负责", "可描述的团队指标", "补了接口测试"):
+            self.assertIn(rule, system[len(_INSTRUCTIONS):])
+        comparison = report["v2_comparison"]
+        self.assertEqual(comparison["original_cases"],
+                         {"metrics_denominator": 11, "exact_matches": 1, "project_mae": 14.364})
+        self.assertEqual({key: item["delta"]["total"] for key, item in comparison["extra_cases"].items()},
+                         {"i_joined_order_api": -10, "team_claimed_faster": -13, "flask_done_no_test": -17})
+        self.assertEqual(set(comparison["v1_disagreements"]), set(pilot.V1_DISAGREEMENT_IDS))
+        self.assertEqual(comparison["v1_disagreements"]["team_we"]["actual"],
+                         dict.fromkeys(pilot.DIMENSIONS, 0))
+
+    def test_v2_retries_leave_a_first_request_for_each_later_case(self):
+        zero = json.dumps({name: {"points": 0, "evidence": ""} for name in pilot.DIMENSIONS})
+        send = Mock(side_effect=[
+            http_error(429), reply(zero), http_error(429), reply(zero), http_error(429),
+            *[reply(zero) for _ in range(11)],
+        ])
+        code, report = self.run_fake_cli(["--live", "--all", "--prompt-version", "v2"], send)
+        self.assertEqual(code, 0)
+        self.assertEqual((report["request_limit"], report["requests"], report["retries"]), (16, 16, 2))
+        self.assertEqual([entry["requests"] for entry in report["cases"]], [0, 2, 2] + [1] * 12)
+        self.assertEqual(report["not_run"], [])
+        failed = report["v2_comparison"]["v1_disagreements"]["team_we"]
+        self.assertEqual(failed["status"], "REVIEW")
+        self.assertIsNone(failed["delta"])
+        self.assertEqual(report["v2_comparison"]["original_cases"]["metrics_denominator"], 10)
+
+    def test_v2_auth_failure_preserves_not_run_comparisons(self):
+        send = Mock(side_effect=http_error(401))
+        code, report = self.run_fake_cli(["--live", "--all", "--prompt-version", "v2"], send)
+        self.assertEqual(code, 1)
+        self.assertTrue(report["aborted"])
+        self.assertEqual(report["v2_comparison"]["original_cases"]["metrics_denominator"], 0)
+        self.assertIsNone(report["v2_comparison"]["original_cases"]["project_mae"])
+        extra = report["v2_comparison"]["extra_cases"]["flask_done_no_test"]
+        self.assertEqual((extra["status"], extra["expected_total"]), ("NOT_RUN", 17))
+        self.assertIsNone(extra["actual_total"])
+        self.assertIsNone(extra["delta"])
+        send.assert_called_once()
 
     def test_full_cli_reserves_all_first_attempts_after_two_retries(self):
         zero = json.dumps({name: {"points": 0, "evidence": ""} for name in pilot.DIMENSIONS})

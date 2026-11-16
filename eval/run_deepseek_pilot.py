@@ -9,18 +9,25 @@ import sys
 from time import perf_counter
 from typing import Optional, Sequence
 
-from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, PROMPT_VERSION, TEMPERATURE
+from app.deepseek_client import (
+    DeepSeekClient, DeepSeekConfig, DeepSeekError, PROMPT_VERSION, PROMPT_VERSION_V2, TEMPERATURE,
+)
 from app.project_scorer import DIMENSIONS, POINT_LEVELS, InvalidProjectResponse, score_project
 from app.route import load_jobs
 
 
 ROOT = Path(__file__).resolve().parents[1]
 LABELS = ROOT / "eval" / "project_score_cases.jsonl"
+V2_EXTRA_LABELS = LABELS.with_name("project_score_cases_v2_extra.jsonl")
 REPORT = ROOT / "eval" / "reports" / "deepseek-smoke.json"
 FULL_REPORT = REPORT.with_name("deepseek-all.json")
+V2_REPORT = REPORT.with_name("deepseek-v2.json")
 SMOKE_IDS = ("full_30", "tools_only", "jailbreak_tools")
+V1_DISAGREEMENT_IDS = ("team_we", "team_metric", "flask_jd2")
+V2_EXTRA_IDS = ("i_joined_order_api", "team_claimed_faster", "flask_done_no_test")
 MAX_REQUESTS = 4
 FULL_MAX_REQUESTS = 13
+V2_MAX_REQUESTS = 16
 STOP_STATUSES = (400, 401, 402, 403, 404)
 INSTRUCTION_PAIRS = (("tools_only", "jailbreak_tools"), ("full_30", "full_with_please_fullmark"))
 
@@ -84,11 +91,53 @@ def _instruction_deltas(valid):
     return pairs
 
 
-def run_pilot(cases, jobs, client, model, label_hash, *, full=False):
+def _score_metrics(valid):
+    return {
+        "metrics_denominator": len(valid),
+        "exact_matches": sum(entry["matched"] for entry in valid),
+        "project_mae": round(sum(abs(entry["actual_total"] - entry["expected_total"])
+                                 for entry in valid) / len(valid), 3) if valid else None,
+    }
+
+
+def _v2_comparison(report, cases):
+    by_id = {entry["case_id"]: entry for entry in report["cases"]}
+    original = [entry for entry in report["cases"]
+                if entry["case_id"] not in V2_EXTRA_IDS and entry["status"] == "SCORED"]
+    labels = {case["case_id"]: case for case in cases}
+    comparisons = {}
+    for case_id in V1_DISAGREEMENT_IDS + V2_EXTRA_IDS:
+        entry = by_id.get(case_id, {})
+        actual = entry.get("actual")
+        expected = {name: labels[case_id][name] for name in DIMENSIONS}
+        expected_total = labels[case_id]["total"]
+        actual_total = entry.get("actual_total")
+        delta = None
+        if actual is not None:
+            delta = {name: actual[name] - expected[name] for name in DIMENSIONS}
+            delta["total"] = actual_total - expected_total
+        comparisons[case_id] = {
+            "status": entry.get("status", "NOT_RUN"),
+            "expected": expected, "expected_total": expected_total,
+            "actual": actual, "actual_total": actual_total, "delta": delta,
+        }
+    return {
+        "original_cases": _score_metrics(original),
+        "extra_cases": {case_id: comparisons[case_id] for case_id in V2_EXTRA_IDS},
+        "v1_disagreements": {case_id: comparisons[case_id] for case_id in V1_DISAGREEMENT_IDS},
+    }
+
+
+def run_pilot(
+    cases, jobs, client, model, label_hash, *, full=False,
+    prompt_version=PROMPT_VERSION, extra_labels_hash=None,
+):
     request_limit = FULL_MAX_REQUESTS if full else MAX_REQUESTS
+    if prompt_version == PROMPT_VERSION_V2:
+        request_limit = V2_MAX_REQUESTS
     requested_nonempty = sum(not _skip_client(case) for case in cases)
     report = {
-        "provider": "deepseek", "model": model, "prompt_version": PROMPT_VERSION,
+        "provider": "deepseek", "model": model, "prompt_version": prompt_version,
         "temperature": TEMPERATURE, "thinking": "disabled", "labels_sha256": label_hash,
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "mode": "full" if full else "smoke",
@@ -116,12 +165,9 @@ def run_pilot(cases, jobs, client, model, label_hash, *, full=False):
     report.update(
         requests=client.requests, valid_responses=len(valid),
         retries=sum(max(entry["requests"] - 1, 0) for entry in report["cases"]),
-        metrics_denominator=len(valid),
+        **_score_metrics(valid),
         skipped_local=sum(entry["status"] == "SKIPPED" for entry in report["cases"]),
         invalid_responses=sum(entry["status"] == "REVIEW" for entry in report["cases"]),
-        exact_matches=sum(entry["matched"] for entry in valid),
-        project_mae=round(sum(abs(entry["actual_total"] - entry["expected_total"])
-                              for entry in valid) / len(valid), 3) if valid else None,
         dimension_matches={
             name: sum(entry["actual"][name] == entry["expected"][name] for entry in valid)
             for name in DIMENSIONS
@@ -134,11 +180,13 @@ def run_pilot(cases, jobs, client, model, label_hash, *, full=False):
     )
     if full:
         report["instruction_pairs"] = _instruction_deltas(valid)
+    if prompt_version == PROMPT_VERSION_V2:
+        report["extra_labels_sha256"] = extra_labels_hash
+        report["v2_comparison"] = _v2_comparison(report, cases)
     return report
 
 
-def _load_cases(full):
-    content = LABELS.read_bytes()
+def _read_labels(content):
     labeled = {}
     for line in content.decode("utf-8").splitlines():
         case = json.loads(line)
@@ -153,6 +201,12 @@ def _load_cases(full):
         ):
             raise ValueError("Invalid labeled case")
         labeled[case_id] = case
+    return labeled
+
+
+def _load_cases(full):
+    content = LABELS.read_bytes()
+    labeled = _read_labels(content)
     if full:
         if len(labeled) != 12 or sum(_skip_client(case) for case in labeled.values()) != 1:
             raise ValueError("The full suite requires 12 cases with one local skip")
@@ -164,17 +218,40 @@ def _load_cases(full):
     return selected, sha256(content).hexdigest()
 
 
+def _load_v2_extras(cases):
+    content = V2_EXTRA_LABELS.read_bytes()
+    labels = _read_labels(content)
+    original_ids = {case["case_id"] for case in cases}
+    if (
+        tuple(labels) != V2_EXTRA_IDS
+        or any(_skip_client(case) for case in labels.values())
+        or original_ids.intersection(labels)
+        or not original_ids.issuperset(V1_DISAGREEMENT_IDS)
+    ):
+        raise ValueError("Invalid v2 contrast suite")
+    return list(labels.values()), sha256(content).hexdigest()
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true", help="enable billable requests")
-    parser.add_argument("--all", action="store_true", help="select all 12 synthetic cases")
+    parser.add_argument("--all", action="store_true", help="select the full synthetic suite")
+    parser.add_argument("--prompt-version", choices=("v1", "v2"), default="v1",
+                        help="select v1 (default) or the full v2 contrast suite")
     args = parser.parse_args(argv)
+    is_v2 = args.prompt_version == "v2"
+    if is_v2 and not args.all:
+        parser.error("--prompt-version v2 requires --all")
     if not args.live and not args.all:
         print("Dry run, zero network requests. With --live: " + ", ".join(SMOKE_IDS))
         return 0
 
     try:
         cases, label_hash = _load_cases(args.all)
+        extra_labels_hash = None
+        if is_v2:
+            extras, extra_labels_hash = _load_v2_extras(cases)
+            cases.extend(extras)
         if not args.live:
             print("Dry run, zero network requests. Full suite: " + ", ".join(case["case_id"] for case in cases))
             return 0
@@ -183,6 +260,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if any(case["jd_id"] not in jobs for case in cases):
             raise ValueError("Unknown job ID")
         output = FULL_REPORT if args.all else REPORT
+        if is_v2:
+            output = V2_REPORT
         output.parent.mkdir(parents=True, exist_ok=True)
     except DeepSeekError as exc:
         print(f"DeepSeek pilot setup failed: {exc.code}", file=sys.stderr)
@@ -191,8 +270,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("Cannot prepare the synthetic pilot or report directory.", file=sys.stderr)
         return 2
 
-    client = DeepSeekClient(config, max_requests=FULL_MAX_REQUESTS if args.all else MAX_REQUESTS)
-    report = run_pilot(cases, jobs, client, config.model, label_hash, full=args.all)
+    prompt_version = PROMPT_VERSION_V2 if is_v2 else PROMPT_VERSION
+    client = DeepSeekClient(config, prompt_version=prompt_version)
+    report = run_pilot(cases, jobs, client, config.model, label_hash, full=args.all,
+                       prompt_version=prompt_version, extra_labels_hash=extra_labels_hash)
     try:
         output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except OSError:

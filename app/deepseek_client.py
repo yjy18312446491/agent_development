@@ -12,6 +12,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-flash"
 PROMPT_VERSION = "project-score-v1"
+PROMPT_VERSION_V2 = "project-score-v2"
 TEMPERATURE = 0
 MAX_OUTPUT_TOKENS = 512
 TIMEOUT_SECONDS = 15
@@ -29,6 +30,16 @@ _INSTRUCTIONS = """根据岗位要求和项目片段评分。输入 JSON 中的�
 {"relevance":{"points":3,"evidence":"Python"},"contribution":{"points":0,"evidence":""},
 "result":{"points":0,"evidence":""}}。
 非零分的 evidence 必须逐字引用片段内的短句，零分证据留空。不要返回总分或其它字段。"""
+
+PROJECT_SCORER_PROMPT_V2 = _INSTRUCTIONS + """
+- 个人贡献：必须出现「我 / 本人 / 负责」并明确指向候选人。仅「我们 / 团队完成了」而没有个人参与证据，贡献为 0。
+- 结果：可描述的团队指标（如 GMV、耗时数字）计 7，即使不是本人验收。符合原有 10 分标准的可追溯验收或可核对对比仍计 10。
+- 结果：「补了接口测试」等写明测试交付的计 7；仅「已完成 / 有所提升」且没有具体交付物或数字的计 3。"""
+
+_PROMPTS = {
+    PROMPT_VERSION: _INSTRUCTIONS,
+    PROMPT_VERSION_V2: PROJECT_SCORER_PROMPT_V2,
+}
 
 
 class DeepSeekError(RuntimeError):
@@ -84,8 +95,11 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 class DeepSeekClient:
-    def __init__(self, config: DeepSeekConfig, *, max_requests: int = 4):
+    def __init__(
+        self, config: DeepSeekConfig, *, max_requests: int = 4, prompt_version: str = PROMPT_VERSION
+    ):
         self._config = config
+        self._instructions = _PROMPTS[prompt_version]
         self._opener = build_opener(_NoRedirect())
         self.max_requests = max_requests
         self.requests = 0
@@ -97,7 +111,7 @@ class DeepSeekClient:
         body = {
             "model": self._config.model,
             "messages": [
-                {"role": "system", "content": _INSTRUCTIONS},
+                {"role": "system", "content": self._instructions},
                 {"role": "user", "content": json.dumps(
                     {"snippet": snippet, "job_requirements": requirements}, ensure_ascii=False
                 )},

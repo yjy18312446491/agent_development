@@ -55,5 +55,5 @@ print(result.score.jd_id, result.score.status, result.score.total)
 
 ## 下一步
 
-1. 基于已记录的 v1 分差复审，开展项目评分 v2 对照，再评估项目片段提取和模型评分的接入方式。
+1. 审核已通过假 HTTP 验证的 [项目评分 v2 对照入口](eval/README.md#v2-对照评测)，完成真实对照后，再评估项目片段提取和模型评分的接入方式。
 2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
