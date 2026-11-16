@@ -40,3 +40,5 @@
 | 2026-11-15 | v0.2-mock-eval | `839582a` | eval | 中文文本的岗位和分数不能直接作为英文 PDF 的标注 | 独立维护 PDF 评测清单，英文 S001 固定为 `JD1 / 60`；空岗位 0 和预期复核 -1 均按各自标注比对 | `test_real_pdf_baseline_matches_all_labels` | 英文学历和否定语句抽取仍受现有规则限制 |
 | 2026-11-16 | v0.2-project-scorer | `2d36eec` | score | 项目分回包缺少结构和原文引证校验 | 校验三个评分维度和非零分引证，空片段跳过客户端；回包异常沿用人工复核并保留岗位 ID | `test_empty_or_whitespace_evidence_cannot_support_nonzero_points`、`test_screen_one_preserves_jd1_on_project_adapter_failure` | 真实模型客户端和费用配置待定 |
 | 2026-11-16 | v0.2-project-scorer | `2d36eec` | eval | 项目分缺少可复用的人工标注 | 固定 12 条合成项目片段标注，用假客户端验证求和；`team_metric` 补齐岗位任务依据 | `test_frozen_labels_match_reviewed_scores_using_a_fake_client`，全量 97 项和 Mock 评测 13/13 通过 | 模型对项目证据和片段内指令的表现待联调 |
+| 2026-11-16 | v0.2-deepseek-pilot | `d672519` | model | 本地配置和假客户端无法验证真实的项目分回包 | 新增显式开启的 DeepSeek 客户端和三条合成样本入口，限制请求次数并保留本地报告 | 真实请求 3 次，总分为 30、3、3，三条均与人工标注一致 | 尚未跑完整标注集，生产筛选继续使用 Mock |
+| 2026-11-16 | v0.2-deepseek-pilot | `d672519` | test | 服务端错误可能导致重复请求或丢失已完成结果 | 限制重试次数，认证或余额错误停止试跑，报告已完成及未运行的样本 | 全量 105 项通过，Mock 评测 13/13 | 报告费用是基于可计量 token 的估算 |
