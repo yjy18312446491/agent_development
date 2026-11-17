@@ -1,0 +1,5 @@
+Resume summary
+Projects
+Built a sample order lookup API with FastAPI.
+Education
+Degree in software engineering.
