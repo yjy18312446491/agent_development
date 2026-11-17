@@ -1,0 +1,7 @@
+Projects
+Library search
+Built a catalog search endpoint with PostgreSQL.
+Room booking
+Added cancellation tests for the booking API.
+Skills
+Python and SQLite

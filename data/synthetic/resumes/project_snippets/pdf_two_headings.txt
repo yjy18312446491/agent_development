@@ -1,0 +1,8 @@
+Projects
+Built a sample inventory lookup API.
+Skills
+Python and Redis
+Project Experience
+Wrote interface tests for a demo booking service.
+Awards
+Fictional campus showcase.
