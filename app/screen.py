@@ -1,8 +1,8 @@
-"""Run the screening pipeline for one PDF resume."""
+"""Run the screening pipeline for one or more PDF resumes."""
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 from app.extract import CandidateProfile, extract_pdf, extract_profile
 from app.finalize import FinalizedResult, finalize_result
@@ -26,6 +26,16 @@ class ScreenResult:
         return finalize_result(
             self.score, self.route, extract_status=self.extract_status, guard_status=self.guard_status
         )
+
+
+@dataclass(frozen=True)
+class BatchRecord:
+    source_name: str
+    finalized: FinalizedResult
+
+    def as_dict(self) -> dict:
+        """Return a JSON-ready record with the source basename."""
+        return {"source_name": self.source_name, **self.finalized.as_dict()}
 
 
 def screen_one(
@@ -58,6 +68,24 @@ def screen_one(
         extract.text, profile, guard, route, jobs, project_scorer=project_scorer
     )
     return ScreenResult(extract.status, guard.status, profile, route, verify_score(scored, route))
+
+
+def screen_many(
+    pdf_paths: Sequence[Union[str, Path]],
+    jobs: Optional[Sequence[JobPosting]] = None,
+    *,
+    project_scorer: Optional[ProjectScorer] = None,
+) -> List[BatchRecord]:
+    """Screen each PDF independently and keep one record per path."""
+    records = []
+    for path in pdf_paths:
+        try:
+            result = screen_one(path, jobs, project_scorer=project_scorer)
+        except Exception:
+            # Ordinary file and scorer errors are already handled by screen_one.
+            result = _early_review("ERROR", "REVIEW", "BATCH_ITEM_ERROR", "单份筛选失败，请人工复核")
+        records.append(BatchRecord(Path(path).name, result.finalized))
+    return records
 
 
 def _early_review(extract_status: str, guard_status: str, code: str, reason: str) -> ScreenResult:

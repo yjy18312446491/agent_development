@@ -14,7 +14,8 @@
 - 英文合成长 PDF 已用于离线端到端测试，覆盖读取文件、通过闸门、路由至 JD1、传递项目原文和将项目分计入总分。
 - 固定合成 PDF 已完成一次显式 DeepSeek v2 联调，项目分 14、总分 74。日常筛选继续使用 Mock。详见 [端到端联调说明](eval/README.md#固定合成-pdf-的-deepseek-端到端联调)。
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
-- 真实项目分的生产接入，以及批量筛选、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
+- 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
+- 真实项目分的生产接入，以及 LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -63,7 +64,22 @@ print(record["tier"])  # B
 
 通过校验的评分按总分分档：80–100 为 A，55–79 为 B，0–54 为 C。`UNMATCHED` 按保留的学历分归入 C。`REVIEW` 保留原因码和总分 `-1`，档位和分项为空。
 
+## 运行批量筛选
+
+```python
+import json
+from pathlib import Path
+
+from app.screen import screen_many
+
+paths = sorted(Path("data/synthetic/resumes").glob("S*.pdf"))
+records = screen_many(paths)
+print(json.dumps([record.as_dict() for record in records], ensure_ascii=False))
+```
+
+批量结果与输入逐项对应。每个对象包含文件名 `source_name` 和单份筛选的 `finalized` 结果。转成字典时，文件名与状态、总分和档位处于同一级。缺失或损坏的文件各自产生复核记录，后续文件继续处理。
+
 ## 下一步
 
-1. 审核单份筛选的结果整形，随后用其序列化结果实现批量筛选、存储和导出。
+1. 审核批量结果字段和失败隔离，随后实现存储和导出。
 2. 逐步补齐 FastAPI、Docker 和 Demo。
