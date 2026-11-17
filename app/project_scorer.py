@@ -3,7 +3,10 @@
 import json
 from typing import Callable, Dict, List, Tuple
 
+from app.extract import CandidateProfile
+from app.project_snippet import extract_project_snippet
 from app.route import JobPosting
+from app.score import ProjectScorer
 
 
 ProjectClient = Callable[[str, str], str]
@@ -57,3 +60,12 @@ def score_project(snippet: str, job: JobPosting, client: ProjectClient) -> int:
             raise InvalidProjectResponse(f"{dimension} 非零分必须引用项目原文")
         total += points
     return total
+
+
+def make_injected_scorer(client: ProjectClient) -> ProjectScorer:
+    """Build a scoring callback that passes only project text and the job to the client."""
+    def scorer(text: str, profile: CandidateProfile, job: JobPosting) -> int:
+        snippet = extract_project_snippet(text)
+        return score_project(snippet, job, client)
+
+    return scorer

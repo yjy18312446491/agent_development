@@ -16,4 +16,5 @@ extract -> guard -> route -> score -> verify -> finalize
 - PDF 集成测试使用 `extract_pdf(path).text` 调用 `extract_project_snippet`，直接比对合成 PDF 中的项目原文，覆盖单段、多段和空段。
 - 离线评测逐个调用 `screen_one`，将合成 PDF 的实际路由、评分和复核结果与固定标注比对，并保存逐场景报告。
 - `project_scorer` 接收显式提供的项目片段和岗位要求，校验注入客户端返回的三项分值和原文引证，再加总为项目分。DeepSeek 在冒烟和完整评测中显式注入 HTTP 客户端。评测默认使用 v1 提示词，完整评测可显式选择 v2，生成独立的对照报告。默认单份筛选采用离线 Mock。
+- `make_injected_scorer(client)` 生成可供 `screen_one` 或 `score_candidate` 显式使用的打分回调。回调从已抽取的简历正文切出项目段，由 `score_project` 将项目原文和岗位要求交给客户端。空段沿用零分和跳过调用的规则，非法回包沿用 `PROJECT_SCORER_ERROR` 复核。
 - `finalize` 负责生成可落库、可评测的结果，待实现。

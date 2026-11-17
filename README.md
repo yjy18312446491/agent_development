@@ -10,6 +10,7 @@
 - DeepSeek 项目分完成首轮 12 条合成片段评测。空片段本地跳过，11 条模型响应均合法，8 条三项分值与人工标注完全一致。默认单份筛选仍采用 Mock。详见 [评测说明](eval/README.md#deepseek-完整评测)。
 - DeepSeek v2 合成片段真实对照在完整重跑中取得 14/14 条有效评分，三项评分均与标注一致。原样本全匹配 11/11，项目总分 MAE 0.0。详见 [v2 对照结果](eval/README.md#真实-v2-对照结果)。
 - 独立的项目原文提取函数按中英文独立标题识别项目段，已用英文合成 PDF 跑通从文件到项目原文的离线路径。现有 PDF 筛选仍采用 Mock 项目分。
+- 项目评分适配器可以显式注入筛选流程，已用假客户端验证项目原文传递、空段跳过和异常回包复核。
 - 真实项目分的生产接入，以及批量筛选、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
@@ -57,5 +58,5 @@ print(result.score.jd_id, result.score.status, result.score.total)
 
 ## 下一步
 
-1. 审核合成 PDF 项目段回归，再验证显式开启 DeepSeek 的 PDF 筛选流程。
+1. 审核项目评分适配器，准备用于完整筛选链路的合成 PDF，再验证显式开启 DeepSeek 的路径。
 2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
