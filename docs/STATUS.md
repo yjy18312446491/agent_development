@@ -22,14 +22,14 @@
 - 单份筛选结果可经 `finalize` 转成 JSON 友好的记录。已评分结果有 A/B/C 档，人工复核保留原因与 `-1`。
 - 批量筛选按输入顺序逐份调用 `screen_one`，生成带文件名的结果。意外异常单独记为 `BATCH_ITEM_ERROR`，后续文件继续处理。
 - 批量结果可写入调用方指定的 SQLite 数据库，按批次回读并导出 CSV。重复写入会回滚，数据库与运行输出保留在本地。
+- FastAPI 本地入口已支持健康检查、批量上传和按批次查询，使用 Mock 及每请求独立 SQLite 连接。
 
 ## 待完成
 
 - 真实 LLM 项目评分的生产接入
-- 审核批次持久化和 CSV 导出
+- 审核本地 FastAPI 接口及文件清理
 - LangGraph 编排
 - Embedding 与向量检索
-- FastAPI API
 - Docker Compose
 - 复审 v2 完整对照，补充更多合成项目样本的评测
 - Demo 页面

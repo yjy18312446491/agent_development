@@ -16,7 +16,7 @@
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
-- 真实项目分的生产接入，以及 LangGraph 编排和 FastAPI 接口待实现。
+- FastAPI 本地接口已支持健康检查、批量上传筛选和按批次查询。真实项目分的生产接入与 LangGraph 编排待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -100,7 +100,27 @@ with closing(connect(output / "screen-results.sqlite")) as conn:
 
 同一批次内文件名必须唯一。重复写入会抛出 `sqlite3.IntegrityError`，该次写入全部回滚。回读按写入顺序返回。CSV 使用 UTF-8 BOM，复核记录的档位和五项分数留空。
 
+## 运行本地 FastAPI
+
+在仓库根目录使用项目虚拟环境安装依赖并启动。服务仅用于本机，监听 `127.0.0.1`，评分默认使用 Mock。
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+uvicorn app.api:app --host 127.0.0.1 --port 8000
+```
+
+另开 PowerShell，用合成 PDF 提交一次批次并查询结果。
+
+```powershell
+curl.exe http://127.0.0.1:8000/health
+$batch = curl.exe -sS -F "files=@data/synthetic/resumes/S001_normal_backend.pdf" -F "files=@data/synthetic/resumes/S002_empty.pdf" http://127.0.0.1:8000/batches | ConvertFrom-Json
+curl.exe "http://127.0.0.1:8000/batches/$($batch.batch_id)"
+```
+
+单次最多上传 10 份 PDF，每份最多 5 MiB，上传校验失败返回 `422`。同一批次文件名按大小写不敏感的方式查重。数据库默认保存在 `tmp/screen-results.sqlite`，可通过进程环境变量 `SCREEN_DB_PATH` 指定位置。上传原件在筛选结束后从临时目录清理。
+
 ## 下一步
 
-1. 审核批次持久化和 CSV 导出。
-2. 逐步补齐 FastAPI、Docker 和 Demo。
+1. 审核本地 FastAPI 接口及文件清理。
+2. 逐步补齐 Docker 和 Demo。
