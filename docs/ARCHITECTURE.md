@@ -18,4 +18,5 @@ extract -> guard -> route -> score -> verify -> finalize
 - `project_scorer` 接收显式提供的项目片段和岗位要求，校验注入客户端返回的三项分值和原文引证，再加总为项目分。DeepSeek 在冒烟和完整评测中显式注入 HTTP 客户端。评测默认使用 v1 提示词，完整评测可显式选择 v2，生成独立的对照报告。默认单份筛选采用离线 Mock。
 - `make_injected_scorer(client)` 生成可供 `screen_one` 或 `score_candidate` 显式使用的打分回调。回调从已抽取的简历正文切出项目段，由 `score_project` 将项目原文和岗位要求交给客户端。空段沿用零分和跳过调用的规则，非法回包沿用 `PROJECT_SCORER_ERROR` 复核。
 - 合成长 PDF 回归使用实际抽取、闸门和路由，分别从 `screen_one` 验证默认 Mock 与显式假客户端，检查项目分计入总分且其他分项一致。
+- `eval.run_screen_deepseek` 对固定合成 PDF 运行同一筛选路径。显式传 `--live` 时，通过现有适配器注入 DeepSeek v2，并记录 Mock 对照与模型实测。
 - `finalize` 负责生成可落库、可评测的结果，待实现。

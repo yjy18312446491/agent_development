@@ -125,3 +125,22 @@
 完整重跑中，原样本未出现新分差。两组指令对的各项分数和项目总分差都为 0。
 
 完整重跑报告保存在本地 `eval/reports/deepseek-v2.json`。以上结论适用于本轮合成片段对照。默认筛选仍采用 Mock，独立的 PDF 规则回归为 13/13。
+
+## 固定合成 PDF 的 DeepSeek 端到端联调
+
+入口使用仓库内的 `pdf_screen_jd1.pdf`，先运行默认 Mock 作对照。预览不读密钥，也不调用模型。
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_screen_deepseek
+.\.venv\Scripts\python.exe -m eval.run_screen_deepseek --live
+```
+
+只有 `--live` 才读取根目录本地 `.env` 并显式向 `screen_one` 注入 DeepSeek v2。客户端收到切出的项目正文和 JD1 要求。每次运行最多两次 HTTP 请求，包含一次可重试错误后的重试。启动或报告写入失败退出 2，联调未通过退出 1，通过退出 0。
+
+报告 `eval/reports/screen-deepseek.json` 保存在本地，包含分数、状态、模型指纹、用量和耗时。这个样本用于验证端到端链路，真实模型观察值独立于假客户端固定分数和原有 14 条合成片段对照。
+
+### 2026-11-17 实测
+
+- `deepseek-flash`、`project-score-v2`、温度 0、关闭思考，响应指纹 `bc19ba97cbe016479903222bb1578db6`。
+- 样本通过闸门并路由至 JD1，返回 `SCORED`。项目三项依次为相关性 7、个人贡献 0、结果证据 7。实际项目分 14，总分 74。Mock 对照项目分 0、总分 60，其余四个分项一致。
+- 1 次实际请求，0 重试，端到端评分路径耗时 1.473 秒。服务端报告输入 464 token、输出 52 token。该单样本记录用于联调验收。

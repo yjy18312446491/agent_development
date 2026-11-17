@@ -12,6 +12,7 @@
 - 独立的项目原文提取函数按中英文独立标题识别项目段，已用英文合成 PDF 跑通从文件到项目原文的离线路径。现有 PDF 筛选仍采用 Mock 项目分。
 - 项目评分适配器可以显式注入筛选流程，已用假客户端验证项目原文传递、空段跳过和异常回包复核。
 - 英文合成长 PDF 已用于离线端到端测试，覆盖读取文件、通过闸门、路由至 JD1、传递项目原文和将项目分计入总分。
+- 固定合成 PDF 已完成一次显式 DeepSeek v2 联调，项目分 14、总分 74。日常筛选继续使用 Mock。详见 [端到端联调说明](eval/README.md#固定合成-pdf-的-deepseek-端到端联调)。
 - 真实项目分的生产接入，以及批量筛选、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
@@ -59,5 +60,5 @@ print(result.score.jd_id, result.score.status, result.score.total)
 
 ## 下一步
 
-1. 审核合成 PDF 的端到端评分回归，再验证显式开启 DeepSeek 的路径。
+1. 审核显式 DeepSeek 联调及失败复核路径。
 2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
