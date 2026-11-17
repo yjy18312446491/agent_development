@@ -21,12 +21,13 @@
 - 已在固定合成长 PDF 上显式运行真实 DeepSeek v2。一次请求得到 JD1、项目分 14、总分 74。真实联调由评测入口开启，默认筛选使用 Mock。
 - 单份筛选结果可经 `finalize` 转成 JSON 友好的记录。已评分结果有 A/B/C 档，人工复核保留原因与 `-1`。
 - 批量筛选按输入顺序逐份调用 `screen_one`，生成带文件名的结果。意外异常单独记为 `BATCH_ITEM_ERROR`，后续文件继续处理。
+- 批量结果可写入调用方指定的 SQLite 数据库，按批次回读并导出 CSV。重复写入会回滚，数据库与运行输出保留在本地。
 
 ## 待完成
 
-- 存储、导出及真实 LLM 项目评分的生产接入
-- 审核批量筛选的输出字段和单份失败隔离
-- LangGraph 编排、SQLite 落库及 CSV 导出
+- 真实 LLM 项目评分的生产接入
+- 审核批次持久化和 CSV 导出
+- LangGraph 编排
 - Embedding 与向量检索
 - FastAPI API
 - Docker Compose

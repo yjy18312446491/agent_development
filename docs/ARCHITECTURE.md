@@ -21,3 +21,4 @@ extract -> guard -> route -> score -> verify -> finalize
 - `eval.run_screen_deepseek` 对固定合成 PDF 运行同一筛选路径。显式传 `--live` 时，通过现有适配器注入 DeepSeek v2，并记录 Mock 对照与模型实测。
 - `finalize` 从已校验的评分生成展示和存储记录，可通过 `screen_one(...).finalized.as_dict()` 取得。记录保留状态、岗位、总分、分项、评分来源和复核原因。`SCORED` 按 80 和 55 两个阈值分档，`REVIEW` 的档位为空。
 - `screen_many` 按输入顺序逐份调用 `screen_one`，每份返回一个 `BatchRecord`。记录序列化时在已校验字段上加 `source_name`。既有复核原因原样保留，未预料的单份异常使用固定原因 `BATCH_ITEM_ERROR`。
+- `store` 将 `BatchRecord.as_dict()` 的五个分项展开，按批次保存到调用方指定的 SQLite 数据库。`screen_results` 以 `(batch_id, source_name)` 保证批次内唯一。按批次回读时用参数绑定并保留写入顺序，CSV 沿用公开字段，复核分项的数据库空值导出为空单元格。

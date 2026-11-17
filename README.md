@@ -15,7 +15,8 @@
 - 固定合成 PDF 已完成一次显式 DeepSeek v2 联调，项目分 14、总分 74。日常筛选继续使用 Mock。详见 [端到端联调说明](eval/README.md#固定合成-pdf-的-deepseek-端到端联调)。
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
-- 真实项目分的生产接入，以及 LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
+- 批量结果可按批次保存到本地 SQLite，并导出 CSV。
+- 真实项目分的生产接入，以及 LangGraph 编排和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -79,7 +80,27 @@ print(json.dumps([record.as_dict() for record in records], ensure_ascii=False))
 
 批量结果与输入逐项对应。每个对象包含文件名 `source_name` 和单份筛选的 `finalized` 结果。转成字典时，文件名与状态、总分和档位处于同一级。缺失或损坏的文件各自产生复核记录，后续文件继续处理。
 
+## 保存批次与导出 CSV
+
+在上面的批量示例之后，可用现有的 `records` 写入本地数据库。示例输出目录 `out/` 已被 Git 忽略。
+
+```python
+from contextlib import closing
+from uuid import uuid4
+
+from app.store import connect, export_csv, fetch_batch, save_batch
+
+output = Path("out")
+output.mkdir(exist_ok=True)
+batch_id = uuid4().hex
+with closing(connect(output / "screen-results.sqlite")) as conn:
+    save_batch(conn, batch_id, records)
+    export_csv(fetch_batch(conn, batch_id), output / f"screen-{batch_id}.csv")
+```
+
+同一批次内文件名必须唯一。重复写入会抛出 `sqlite3.IntegrityError`，该次写入全部回滚。回读按写入顺序返回。CSV 使用 UTF-8 BOM，复核记录的档位和五项分数留空。
+
 ## 下一步
 
-1. 审核批量结果字段和失败隔离，随后实现存储和导出。
+1. 审核批次持久化和 CSV 导出。
 2. 逐步补齐 FastAPI、Docker 和 Demo。
