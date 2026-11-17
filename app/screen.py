@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 
 from app.extract import CandidateProfile, extract_pdf, extract_profile
+from app.finalize import FinalizedResult, finalize_result
 from app.guard import guard_text
 from app.route import JobPosting, RouteResult, load_jobs, route_profile
 from app.score import ProjectScorer, ScoreResult, score_candidate
@@ -18,6 +19,13 @@ class ScreenResult:
     profile: Optional[CandidateProfile]
     route: Optional[RouteResult]
     score: ScoreResult
+
+    @property
+    def finalized(self) -> FinalizedResult:
+        """Expose the verified result as a display and storage record."""
+        return finalize_result(
+            self.score, self.route, extract_status=self.extract_status, guard_status=self.guard_status
+        )
 
 
 def screen_one(

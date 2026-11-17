@@ -13,6 +13,7 @@
 - 项目评分适配器可以显式注入筛选流程，已用假客户端验证项目原文传递、空段跳过和异常回包复核。
 - 英文合成长 PDF 已用于离线端到端测试，覆盖读取文件、通过闸门、路由至 JD1、传递项目原文和将项目分计入总分。
 - 固定合成 PDF 已完成一次显式 DeepSeek v2 联调，项目分 14、总分 74。日常筛选继续使用 Mock。详见 [端到端联调说明](eval/README.md#固定合成-pdf-的-deepseek-端到端联调)。
+- 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 真实项目分的生产接入，以及批量筛选、LangGraph 编排、SQLite 落库、CSV 导出和 FastAPI 接口待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
@@ -56,9 +57,13 @@ from app.screen import screen_one
 
 result = screen_one("data/synthetic/resumes/S001_normal_backend.pdf")
 print(result.score.jd_id, result.score.status, result.score.total)
+record = result.finalized.as_dict()
+print(record["tier"])  # B
 ```
+
+通过校验的评分按总分分档：80–100 为 A，55–79 为 B，0–54 为 C。`UNMATCHED` 按保留的学历分归入 C。`REVIEW` 保留原因码和总分 `-1`，档位和分项为空。
 
 ## 下一步
 
-1. 审核显式 DeepSeek 联调及失败复核路径。
-2. 实现批量筛选、结果存储与导出，逐步补齐 FastAPI、Docker 和 Demo。
+1. 审核单份筛选的结果整形，随后用其序列化结果实现批量筛选、存储和导出。
+2. 逐步补齐 FastAPI、Docker 和 Demo。

@@ -19,4 +19,4 @@ extract -> guard -> route -> score -> verify -> finalize
 - `make_injected_scorer(client)` 生成可供 `screen_one` 或 `score_candidate` 显式使用的打分回调。回调从已抽取的简历正文切出项目段，由 `score_project` 将项目原文和岗位要求交给客户端。空段沿用零分和跳过调用的规则，非法回包沿用 `PROJECT_SCORER_ERROR` 复核。
 - 合成长 PDF 回归使用实际抽取、闸门和路由，分别从 `screen_one` 验证默认 Mock 与显式假客户端，检查项目分计入总分且其他分项一致。
 - `eval.run_screen_deepseek` 对固定合成 PDF 运行同一筛选路径。显式传 `--live` 时，通过现有适配器注入 DeepSeek v2，并记录 Mock 对照与模型实测。
-- `finalize` 负责生成可落库、可评测的结果，待实现。
+- `finalize` 从已校验的评分生成展示和存储记录，可通过 `screen_one(...).finalized.as_dict()` 取得。记录保留状态、岗位、总分、分项、评分来源和复核原因。`SCORED` 按 80 和 55 两个阈值分档，`REVIEW` 的档位为空。
