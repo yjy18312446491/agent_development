@@ -1,0 +1,19 @@
+Name: Fictional Cedar Candidate
+Target role: Backend Engineer
+Work experience
+2020.01-2026.01 Fictional Cedar Workshop, Backend Engineer
+Maintained backend services for a fictional inventory platform.
+Designed service interfaces and validated order lifecycle events.
+Reviewed schema changes for stock reservations and order audits.
+Investigated delayed messages in the task queue and alert logs.
+Documented recovery steps for failed stock reconciliation jobs.
+Prepared release notes and verified rollback steps in staging.
+Built dashboards for request latency and background job failures.
+Reviewed service changes and updated the incident response guide.
+Projects
+Built a sample order lookup API with FastAPI.
+Added tests for missing orders and invalid IDs.
+Skills
+Python FastAPI MySQL Redis Docker Linux
+Education
+Completed a fictional software engineering program.
