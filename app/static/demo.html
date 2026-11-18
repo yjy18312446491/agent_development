@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>简历筛选 Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Microsoft YaHei UI", system-ui, sans-serif;
+      color: #142b33;
+      background: #f1f5f4;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { width: min(100% - 2rem, 62rem); margin: clamp(2rem, 7vw, 5rem) auto; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.15; }
+    h2 { margin: 0 0 1.25rem; font-size: 1.15rem; }
+    p { margin: .75rem 0 0; line-height: 1.55; }
+    header p, small { color: #48616a; }
+    .forms { display: grid; gap: 1rem; margin-top: 2rem; }
+    @media (min-width: 44rem) {
+      .forms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    form, .results {
+      min-width: 0;
+      padding: clamp(1rem, 4vw, 1.75rem);
+      border: 1px solid #cedbd9;
+      border-radius: .85rem;
+      background: #fff;
+    }
+    label { display: block; margin-bottom: .5rem; font-weight: 600; }
+    input, button { font: inherit; }
+    input {
+      width: 100%;
+      min-height: 2.75rem;
+      padding: .5rem;
+      border: 1px solid #9db2b3;
+      border-radius: .4rem;
+      background: #f8faf9;
+    }
+    small { display: block; margin-top: .5rem; }
+    button {
+      margin-top: 1rem;
+      min-height: 2.75rem;
+      padding: .5rem 1rem;
+      border: 1px solid #115d53;
+      border-radius: .4rem;
+      background: #115d53;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #lookup button { color: #115d53; background: #fff; }
+    button:disabled { opacity: .6; cursor: wait; }
+    :focus-visible { outline: 3px solid #217a70; outline-offset: 3px; }
+    #notice { min-height: 1.55em; margin: 1rem 0; }
+    #notice[data-error] { color: #942d23; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: .8rem; border-bottom: 1px solid #e0e9e7; white-space: nowrap; }
+    thead { background: #eaf2ef; }
+    tbody tr:last-child td { border-bottom: 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>简历筛选 Demo</h1>
+      <p>仅本机使用，默认使用 Mock 评分。请上传合成 PDF。</p>
+    </header>
+
+    <div class="forms">
+      <form id="upload" aria-labelledby="upload-title">
+        <h2 id="upload-title">上传并筛选</h2>
+        <label for="files">合成 PDF</label>
+        <input id="files" type="file" name="files" multiple accept=".pdf" required aria-describedby="file-limit">
+        <small id="file-limit">每批最多 10 份，每份最多 5 MiB。</small>
+        <button type="submit">开始筛选</button>
+      </form>
+
+      <form id="lookup" aria-labelledby="lookup-title">
+        <h2 id="lookup-title">查询历史批次</h2>
+        <label for="batch-id">批次 ID</label>
+        <input id="batch-id" name="batch_id" type="text" required spellcheck="false" autocomplete="off">
+        <button type="submit">查询批次</button>
+      </form>
+    </div>
+
+    <p id="notice" role="status"></p>
+
+    <section id="results" class="results" aria-labelledby="results-title" hidden>
+      <h2 id="results-title">批次结果</h2>
+      <div class="table-scroll" role="region" aria-labelledby="results-title" tabindex="0">
+        <table aria-labelledby="results-title">
+          <thead>
+            <tr>
+              <th scope="col">文件名</th>
+              <th scope="col">状态</th>
+              <th scope="col">档位</th>
+              <th scope="col">总分</th>
+              <th scope="col">项目分</th>
+              <th scope="col">复核原因码</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const upload = document.querySelector("#upload");
+    const lookup = document.querySelector("#lookup");
+    const batchId = document.querySelector("#batch-id");
+    const notice = document.querySelector("#notice");
+    const results = document.querySelector("#results");
+    const rows = document.querySelector("#rows");
+    const buttons = document.querySelectorAll("button[type=submit]");
+    const fields = ["source_name", "status", "tier", "total", "project", "reason_code"];
+
+    function renderRows(items) {
+      const fragment = document.createDocumentFragment();
+      for (const item of items) {
+        const row = document.createElement("tr");
+        for (const field of fields) {
+          const cell = document.createElement("td");
+          cell.textContent = item[field] ?? "";
+          row.append(cell);
+        }
+        fragment.append(row);
+      }
+      rows.replaceChildren(fragment);
+      results.hidden = false;
+    }
+
+    function showError(message) {
+      notice.setAttribute("data-error", "");
+      notice.textContent = message;
+    }
+
+    async function requestBatch(url, options, pendingMessage) {
+      for (const button of buttons) button.disabled = true;
+      results.hidden = true;
+      notice.removeAttribute("data-error");
+      notice.textContent = pendingMessage;
+
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        if (!response.ok) {
+          showError(typeof data.detail === "string" ? data.detail : "批次请求失败");
+          return;
+        }
+        renderRows(data.items);
+        batchId.value = data.batch_id;
+        notice.textContent = `已加载 ${data.items.length} 份结果，批次 ID 已填入查询框。`;
+      } catch {
+        showError("请求失败，请检查本地服务后重试。");
+      } finally {
+        for (const button of buttons) button.disabled = false;
+      }
+    }
+
+    upload.addEventListener("submit", (event) => {
+      event.preventDefault();
+      requestBatch("/batches", { method: "POST", body: new FormData(upload) }, "正在筛选…");
+    });
+
+    lookup.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const id = batchId.value.trim();
+      if (!id || id === "." || id === "..") {
+        results.hidden = true;
+        showError("请输入有效的批次 ID。");
+        return;
+      }
+      requestBatch(`/batches/${encodeURIComponent(id)}`, {}, "正在查询…");
+    });
+  </script>
+</body>
+</html>

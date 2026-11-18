@@ -1,0 +1,3 @@
+{"case_id":"i_joined_order_api","jd_id":"JD1","snippet":"我参与了订单查询接口开发，使用 FastAPI 和 MySQL。","relevance":7,"contribution":3,"result":0,"total":10,"skip_client":false,"reason":"有岗位任务和「我参与」，无职责细节、无结果。对照 team_we 的团队主语，后者个人贡献为 0。"}
+{"case_id":"team_claimed_faster","jd_id":"JD1","snippet":"我参与开发。团队用 FastAPI 和 MySQL 做了订单查询接口，性能有所提升。","relevance":7,"contribution":3,"result":3,"total":13,"skip_client":false,"reason":"与 team_metric 对照。没有具体指标，结果只声称改善。"}
+{"case_id":"flask_done_no_test","jd_id":"JD2","snippet":"我负责库存查询接口，使用 Flask 和 PostgreSQL，已经完成。","relevance":7,"contribution":7,"result":3,"total":17,"skip_client":false,"reason":"与 flask_jd2 对照。只声称已完成，没有写明接口测试交付。"}

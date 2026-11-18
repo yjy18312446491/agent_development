@@ -1,0 +1,14 @@
+case_id,pdf_path,scenario,extract_status,guard_status,route_id,score_status,score_jd_id,total,skill,project,years,education,bonus,reason_code
+S001,data/synthetic/resumes/S001_normal_backend.pdf,default,OK,PASS,JD1,SCORED,JD1,60,40,0,15,0,5,
+S002,data/synthetic/resumes/S002_empty.pdf,default,EMPTY,REVIEW,,REVIEW,,-1,,,,,,EMPTY
+S003,data/synthetic/resumes/S003_image_only.pdf,default,EMPTY,REVIEW,,REVIEW,,-1,,,,,,EMPTY
+S004,data/synthetic/resumes/S004_scan_fragment.pdf,default,OK,REVIEW,,REVIEW,,-1,,,,,,SUSPECT_SCAN_OR_CORRUPT
+S005,data/synthetic/resumes/S005_corrupt.pdf,default,ERROR,REVIEW,,REVIEW,,-1,,,,,,EXTRACT_ERROR
+S006,data/synthetic/resumes/S006_short_text.pdf,default,OK,REVIEW,,REVIEW,,-1,,,,,,TOO_SHORT
+S007,data/synthetic/resumes/S007_education_only.pdf,default,OK,PASS,JD1,SCORED,JD1,45,30,0,15,0,0,
+S008,data/synthetic/resumes/S008_project_only.pdf,default,OK,PASS,JD2,SCORED,JD2,42,27,0,15,0,0,
+S009,data/synthetic/resumes/S009_mixed_work_education.pdf,default,OK,PASS,JD1,SCORED,JD1,48,30,0,15,0,3,
+S010,data/synthetic/resumes/S010_negated_skills.pdf,default,OK,PASS,JD2,SCORED,JD2,47,27,0,15,0,5,
+S001-empty-jobs,data/synthetic/resumes/S001_normal_backend.pdf,empty_jobs,OK,PASS,UNMATCHED,SCORED,UNMATCHED,0,0,0,0,0,0,
+S001-project-none,data/synthetic/resumes/S001_normal_backend.pdf,empty_project_score,OK,PASS,JD1,REVIEW,JD1,-1,,,,,,INVALID_PROJECT_SCORE
+S001-project-31,data/synthetic/resumes/S001_normal_backend.pdf,out_of_range_project_score,OK,PASS,JD1,REVIEW,JD1,-1,,,,,,INVALID_PROJECT_SCORE

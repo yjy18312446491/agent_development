@@ -1,0 +1,4 @@
+工作经历
+负责样例仓储系统的出入库接口。
+Work Experience
+Maintained a test warehouse service.

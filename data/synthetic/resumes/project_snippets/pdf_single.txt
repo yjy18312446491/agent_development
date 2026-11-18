@@ -1,0 +1,5 @@
+Projects
+Built a sample order lookup API with FastAPI.
+Added tests for missing orders and invalid IDs.
+Education
+Completed a fictional software engineering program.

@@ -1,0 +1,3 @@
+Backend engineer
+Built a task queue and wrote a deployment guide.
+Maintained its dashboards and tests.

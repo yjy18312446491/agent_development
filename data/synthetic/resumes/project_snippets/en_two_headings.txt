@@ -1,0 +1,8 @@
+Projects
+Built a library search endpoint.
+Skills
+Python, PostgreSQL
+Project Experience
+Wrote tests for booking cancellations.
+Awards
+Fictional campus showcase.

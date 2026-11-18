@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resume-screening-agent"
+version = "0.1.0"
+description = "A testable AI application for resume and job matching"
+requires-python = ">=3.9"
+dependencies = [
+    "PyMuPDF>=1.24,<2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
