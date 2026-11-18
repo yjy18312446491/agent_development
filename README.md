@@ -16,7 +16,7 @@
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
-- FastAPI 本地接口已支持健康检查、批量上传筛选和按批次查询。真实项目分的生产接入与 LangGraph 编排待实现。
+- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。真实项目分的生产接入与 LangGraph 编排待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -110,6 +110,8 @@ python -m pip install -r requirements.txt
 uvicorn app.api:app --host 127.0.0.1 --port 8000
 ```
 
+浏览器打开 [本地 Demo](http://127.0.0.1:8000/)，上传 `data/synthetic/resumes/` 下的 `S001_normal_backend.pdf` 和 `S002_empty.pdf`。示例结果分别为 `SCORED / B / 60` 和 `REVIEW / EMPTY / -1`。页面自动填入批次 ID，可直接点击「查询批次」验证回读。
+
 另开 PowerShell，用合成 PDF 提交一次批次并查询结果。
 
 ```powershell
@@ -119,10 +121,6 @@ curl.exe "http://127.0.0.1:8000/batches/$($batch.batch_id)"
 ```
 
 单次最多上传 10 份 PDF，每份最多 5 MiB，上传校验失败返回 `422`。同一批次文件名按大小写不敏感的方式查重。数据库默认保存在 `tmp/screen-results.sqlite`，可通过进程环境变量 `SCREEN_DB_PATH` 指定位置。上传原件在筛选结束后从临时目录清理。
-
-## 下一步
-
-1. 规划本地 Demo 的批量上传、结果展示和按批次回查。
 
 ## Docker（可选）
 

@@ -15,6 +15,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import FormData, UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.requests import ClientDisconnect
+from starlette.responses import FileResponse
 
 from app.screen import screen_many
 from app.store import connect, fetch_batch, save_batch
@@ -106,6 +107,11 @@ def _screen_and_save(uploads: List[UploadFile]) -> dict:
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/", response_class=FileResponse, include_in_schema=False)
+def demo() -> FileResponse:
+    return FileResponse(Path(__file__).with_name("static") / "demo.html", media_type="text/html")
 
 
 @app.post(
