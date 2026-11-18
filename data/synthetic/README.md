@@ -8,6 +8,7 @@ PDF 夹具使用英文正文，保证 PyMuPDF 在干净环境中不依赖本机�
 
 - `resumes/` 包含正常、空文件、图片型、损坏、过短、教育经历、项目经历和混合经历样本。
 - `resumes/project_snippets/` 包含中英文切段文本、5 份短英文 PDF 和 1 份长英文 PDF。PDF 使用 PyMuPDF 和内置 Helvetica 11 号字，标题独立成行。短 PDF 验证切段边界，`pdf_screen_jd1.pdf` 用于 `tests/test_screen_snippet_pdf.py`，验证通过闸门后路由至 JD1 和注入项目评分。这些夹具独立于 Mock PDF 的 13 个评测场景。
+- `resumes/live_pdf_eval/` 包含 8 份虚构英文 PDF，使用 ReportLab 和内置 Helvetica 生成。7 份长文通过闸门，1 份短文用于验证拦截。[独立标注](../../eval/live_pdf_cases.json) 固定每份 PDF 的 SHA-256、评分依据和预期结果。
 - `jobs/` 包含三个合成岗位文本和带稳定 `jd_id`、年限范围、技能列表的 `jobs.json`，供 route 和后续 score 阶段使用。
 - `manifest.jsonl` 保存每个样本的预期抽取状态、guard 状态和画像字段。
 
