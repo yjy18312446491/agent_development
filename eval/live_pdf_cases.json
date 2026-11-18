@@ -1,0 +1,150 @@
+[
+  {
+    "id": "personal_api",
+    "pdf": "personal_api.pdf",
+    "sha256": "ddb248e46a3d8a93bb8da4a3a28493f7ba3cfd4faf3927957f1946efea08aa79",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "JD1",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 60,
+    "model_expected": true,
+    "project_dimensions": {
+      "relevance": 7,
+      "contribution": 7,
+      "result": 7
+    },
+    "project_total": 21,
+    "total": 81,
+    "annotation": "One specific matching API task; first-person implementation; concrete test delivery."
+  },
+  {
+    "id": "team_api",
+    "pdf": "team_api.pdf",
+    "sha256": "74aa3ee3c7486101a5b3bbff1f8ae4a2d6127c80161ed721a379b4c10017d85b",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "JD1",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 60,
+    "model_expected": true,
+    "project_dimensions": {
+      "relevance": 7,
+      "contribution": 0,
+      "result": 7
+    },
+    "project_total": 14,
+    "total": 74,
+    "annotation": "A specific Redis task and a concrete team deliverable; no individual responsibility."
+  },
+  {
+    "id": "two_projects",
+    "pdf": "two_projects.pdf",
+    "sha256": "7ed592a84399199e1fb4a63f0e3c60ec772769a2a07da5dddc8be1a6c2c140f5",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "JD1",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 60,
+    "model_expected": true,
+    "project_dimensions": {
+      "relevance": 10,
+      "contribution": 7,
+      "result": 10
+    },
+    "project_total": 27,
+    "total": 87,
+    "annotation": "Two matching tasks with implementation details; first-person responsibility; controlled before/after measurement."
+  },
+  {
+    "id": "unrelated_project",
+    "pdf": "unrelated_project.pdf",
+    "sha256": "f66a1451f141f09e3ea6f0c81ee9e01c823be0e0be373c0b4a0c6f9b7fb20d86",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "JD1",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 60,
+    "model_expected": true,
+    "project_dimensions": {
+      "relevance": 0,
+      "contribution": 7,
+      "result": 7
+    },
+    "project_total": 14,
+    "total": 74,
+    "annotation": "No matching task or tool; explicit personal action and a specific deliverable."
+  },
+  {
+    "id": "tool_mention",
+    "pdf": "tool_mention.pdf",
+    "sha256": "0d910fab9a69a8d42e2a3d4f000d156f11da9c0b531ca6ab63af3519d42f33de",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "JD1",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 60,
+    "model_expected": true,
+    "project_dimensions": {
+      "relevance": 3,
+      "contribution": 0,
+      "result": 0
+    },
+    "project_total": 3,
+    "total": 63,
+    "annotation": "Relevant tools only; no individual action or result."
+  },
+  {
+    "id": "no_projects",
+    "pdf": "no_projects.pdf",
+    "sha256": "95218c690971aab1704b75d4beed11e0434a243038a06cd182344dd9824afc8a",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "JD1",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 60,
+    "model_expected": false,
+    "project_dimensions": null,
+    "project_total": 0,
+    "total": 60,
+    "annotation": "No standalone project section in a matched, long PDF."
+  },
+  {
+    "id": "unmatched",
+    "pdf": "unmatched.pdf",
+    "sha256": "fe28cf2d05dc526dd29523d2862266460b5f5d46a1892ae8d9785f4255908b64",
+    "language": "en",
+    "guard_status": "PASS",
+    "jd_id": "UNMATCHED",
+    "status": "SCORED",
+    "reason_code": "",
+    "rule_total": 0,
+    "model_expected": false,
+    "project_dimensions": null,
+    "project_total": 0,
+    "total": 0,
+    "annotation": "Standalone project section, but no evaluated role skills."
+  },
+  {
+    "id": "short_gate",
+    "pdf": "short_gate.pdf",
+    "sha256": "a4493adca6d6550a64695f35f5248453525b86405af60a6dd865b8f2e6f819d3",
+    "language": "en",
+    "guard_status": "REVIEW",
+    "jd_id": "",
+    "status": "REVIEW",
+    "reason_code": "TOO_SHORT",
+    "rule_total": -1,
+    "model_expected": false,
+    "project_dimensions": null,
+    "project_total": null,
+    "total": -1,
+    "annotation": "Deliberately short text fails the gate despite a standalone project heading."
+  }
+]
