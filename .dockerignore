@@ -1,0 +1,31 @@
+# Build context allowlist.
+**
+!requirements.txt
+!app
+!app/**
+!data
+!data/synthetic
+!data/synthetic/jobs
+!data/synthetic/jobs/**
+!data/synthetic/resumes
+
+# Keep local and generated files out even under allowed directories.
+**/.git
+**/.venv
+**/venv
+**/.env
+**/.env.*
+**/__pycache__
+**/*.py[cod]
+**/*.db*
+**/*.sqlite*
+**/*.pem
+**/*.key
+eval/reports/
+tmp/
+out/
+docs/CODEX_HANDOFF_*.md
+docs/CURSOR_HANDOFF_*.md
+**/*.[pP][dD][fF]
+!data/synthetic/resumes/S001_normal_backend.pdf
+!data/synthetic/resumes/S002_empty.pdf

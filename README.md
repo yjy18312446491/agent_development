@@ -122,5 +122,60 @@ curl.exe "http://127.0.0.1:8000/batches/$($batch.batch_id)"
 
 ## 下一步
 
-1. 审核本地 FastAPI 接口及文件清理。
-2. 逐步补齐 Docker 和 Demo。
+1. 审核本地 Compose 配置，并在具备 Docker Engine 的环境验收。
+2. 补齐 Demo。
+
+## Docker（可选）
+
+需要 Docker Engine 和 Compose。服务 `api` 以非 root 用户运行，监听容器内的 `127.0.0.1:8000`，并使用 Mock。Compose 无宿主机端口映射。SQLite 保存在命名卷 `screen-data` 中，容器内路径为 `/data/screen-results.sqlite`。
+
+基础镜像固定为 `python:3.9.25-slim-bookworm` 的摘要，保留 Python 3.9 兼容线。这个配置用于本地合成样本验收。
+
+```powershell
+docker version
+docker compose version
+docker compose config
+docker compose up -d --build --wait
+docker compose exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read().decode())"
+```
+
+用镜像自带的两份合成 PDF 验证批量上传和回读，记录返回的批次 ID。
+
+```powershell
+$batchId = @'
+import json
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+base = "http://127.0.0.1:8000/batches"
+boundary = "screening-smoke"
+fixtures = Path("/srv/data/synthetic/resumes")
+parts = []
+for name in ("S001_normal_backend.pdf", "S002_empty.pdf"):
+    header = (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="files"; filename="{name}"\r\n'
+        "Content-Type: application/pdf\r\n\r\n"
+    )
+    parts.extend((header.encode("ascii"), (fixtures / name).read_bytes(), b"\r\n"))
+body = b"".join(parts) + f"--{boundary}--\r\n".encode("ascii")
+request = Request(base, data=body, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+with urlopen(request, timeout=10) as response:
+    created = json.load(response)
+with urlopen(f"{base}/{created['batch_id']}", timeout=10) as response:
+    assert json.load(response) == created
+normal, empty = created["items"]
+assert (normal["jd_id"], normal["tier"], normal["total"], normal["project_source"]) == ("JD1", "B", 60, "mock")
+assert (empty["status"], empty["reason_code"], empty["total"], empty["tier"]) == ("REVIEW", "EMPTY", -1, None)
+print(created["batch_id"])
+'@ | docker compose exec -T api python -
+```
+
+停止并重建容器时保留命名卷，再查询同一批次。
+
+```powershell
+docker compose down
+docker compose up -d --wait
+docker compose exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/batches/$batchId', timeout=3).read().decode())"
+```
+
+Docker 构建、运行和重建回读仍待使用可用的 Docker Engine 验证。

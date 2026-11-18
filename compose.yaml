@@ -1,0 +1,10 @@
+services:
+  api:
+    build: .
+    environment:
+      SCREEN_DB_PATH: /data/screen-results.sqlite
+    volumes:
+      - screen-data:/data
+
+volumes:
+  screen-data:
