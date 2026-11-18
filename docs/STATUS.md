@@ -23,12 +23,13 @@
 - 批量筛选按输入顺序逐份调用 `screen_one`，生成带文件名的结果。意外异常单独记为 `BATCH_ITEM_ERROR`，后续文件继续处理。
 - 批量结果可写入调用方指定的 SQLite 数据库，按批次回读并导出 CSV。重复写入会回滚，数据库与运行输出保留在本地。
 - FastAPI 本地入口已支持健康检查、批量上传和按批次查询，使用 Mock 及每请求独立 SQLite 连接。
-- 已新增本地 Docker Compose 配置。容器构建、健康检查、合成 PDF 上传和命名卷重建待引擎验收。
+- 本地 Docker Compose 配置已在 GitHub 托管 Linux 运行器实跑。Docker Engine 28.0.4、Compose v2.38.2，构建及镜像内 `pip check` 通过。UID 1000 可写 `/data`，健康检查未建库，镜像内确认岗位配置和两份合成 PDF。
+- 合成批次 `31baf778f8b64289981848835df00e5a` 的 POST 与 GET 返回一致，S001 为 `JD1 / B / 60 / mock`，S002 为 `REVIEW / EMPTY / -1`。非法上传返回 422，库中仍只有原批次。保留命名卷重建后，新容器 `43587a789d38` 代替原容器 `bc06079640b8`，用同一批次 ID 读回的内容与顺序一致。 [实测日志](https://github.com/yjy18312446491/agent_development/actions/runs/44243560755)
 
 ## 待完成
 
 - 真实 LLM 项目评分的生产接入
-- 审核本地 Docker Compose 配置并完成引擎验收
+- Windows 宿主机 Docker Desktop 复验
 - LangGraph 编排
 - Embedding 与向量检索
 - 复审 v2 完整对照，补充更多合成项目样本的评测

@@ -122,8 +122,7 @@ curl.exe "http://127.0.0.1:8000/batches/$($batch.batch_id)"
 
 ## 下一步
 
-1. 审核本地 Compose 配置，并在具备 Docker Engine 的环境验收。
-2. 补齐 Demo。
+1. 规划本地 Demo 的批量上传、结果展示和按批次回查。
 
 ## Docker（可选）
 
@@ -178,4 +177,4 @@ docker compose up -d --wait
 docker compose exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/batches/$batchId', timeout=3).read().decode())"
 ```
 
-Docker 构建、运行和重建回读仍待使用可用的 Docker Engine 验证。
+2026-11-18 已在 GitHub 托管 Linux 运行器上验证 `c908730`，使用 Docker Engine 28.0.4 和 Compose v2.38.2。构建、健康检查、合成 PDF 上传、非法上传 422 和重建回读均通过。Windows 宿主机的 Docker Desktop 尚未验收。 [容器验收日志](https://github.com/yjy18312446491/agent_development/actions/runs/44243560755)
