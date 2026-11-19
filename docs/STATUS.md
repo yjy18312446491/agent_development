@@ -25,7 +25,7 @@
 - FastAPI 本地入口已支持健康检查、批量上传和按批次查询，使用 Mock 及每请求独立 SQLite 连接。
 - FastAPI 的显式 `project_scorer=deepseek` 项目评分已通过 PR #24 合入 main，按批次保留请求预算和停止状态。2026-11-19 已用一份冻结合成 PDF 完成本机真实 HTTP 联调，1 次模型请求、0 重试，项目分 24、总分 84、A 档，POST、GET 与 SQLite 一致。缺省筛选与 Demo 使用 Mock。[HTTP 联调记录](../eval/README.md#2026-11-19-本机-http-联调)
 - 本地 Demo 可上传合成 PDF、展示档位和复核原因码，并按批次 ID 回查。评分沿用 Mock。
-- `screen_one` 已通过本地 LangGraph 编排抽取、闸门、岗位加载、画像、路由、评分和校验，沿用 `ScreenResult` 与 `BatchRecord`。图内异常进入人工复核，每次调用独立保存状态并关闭外部追踪。新增 40 项图编排回归，全量 310 项通过，Mock PDF 13/13、预览零请求。本阶段使用 Mock 和假客户端验证。
+- `screen_one` 的本地 LangGraph 编排已通过 [PR #26](https://github.com/yjy18312446491/agent_development/pull/26) 合入 main，合并提交 `badbe18`，保留功能提交 `d890563` 和版本记录 `89364ed`。图复用抽取、闸门、岗位加载、画像、路由、评分和校验，沿用 `ScreenResult` 与 `BatchRecord`。图内异常进入人工复核，每次调用独立保存状态并关闭外部追踪。合入后复跑全量 310 项通过，Mock PDF 13/13、预览零请求；默认使用 Mock，本次未发送真实模型请求。
 - v0.3 已完成 8 份英文合成 PDF 的真实测评。5 次请求均取得合法评分，3 份按预期跳过，三项全匹配 3/5，项目分 MAE 1.4。复审记录两处分差，保留原标注。默认筛选继续使用 Mock。[实测记录](../eval/README.md#2026-11-19-实测复审)
 - 多 PDF 评测的 HTTP 400–404 及 `REQUEST_LIMIT` 停止逻辑已通过 PR #23 合入 main。后续应调用样本保留停止原因并记为未运行，跳过场景仍本地核对。全量 244 项测试和 Mock PDF 13/13 通过，预览零请求。
 - 本地 Docker Compose 配置已在 GitHub 托管 Linux 运行器实跑。Docker Engine 28.0.4、Compose v2.38.2，构建及镜像内 `pip check` 通过。UID 1000 可写 `/data`，健康检查未建库，镜像内确认岗位配置和两份合成 PDF。
