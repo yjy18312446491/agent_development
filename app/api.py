@@ -7,7 +7,7 @@ from pathlib import Path, PureWindowsPath
 from shutil import copyfileobj
 import sqlite3
 from tempfile import TemporaryDirectory
-from typing import AsyncIterator, List
+from typing import AsyncIterator, List, Optional
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -17,15 +17,21 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.requests import ClientDisconnect
 from starlette.responses import FileResponse
 
+from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, PROMPT_VERSION_V2
+from app.project_scorer import make_injected_scorer
+from app.score import ProjectScorer, ProviderStoppedError
 from app.screen import screen_many
 from app.store import connect, fetch_batch, save_batch
 
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "tmp" / "screen-results.sqlite"
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = ROOT / "tmp" / "screen-results.sqlite"
 MAX_FILES = 10
 MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_REQUEST_BYTES = MAX_FILES * MAX_FILE_BYTES + 1024 * 1024  # Multipart framing overhead.
 INVALID_UPLOAD = "上传文件不符合要求"
+# Match the evaluator's terminal HTTP statuses within the app-only runtime image.
+STOP_STATUSES = (400, 401, 402, 403, 404)
 
 app = FastAPI(title="简历筛选")
 
@@ -82,7 +88,37 @@ def _validated_uploads(form: FormData) -> List[UploadFile]:
     return uploads
 
 
-def _screen_and_save(uploads: List[UploadFile]) -> dict:
+def _make_deepseek_scorer(file_count: int) -> ProjectScorer:
+    request_limit = file_count + 2
+    try:
+        config = DeepSeekConfig.from_env_file(ROOT / ".env")
+        client = DeepSeekClient(config, max_requests=request_limit, prompt_version=PROMPT_VERSION_V2)
+    except DeepSeekError:
+        raise HTTPException(503, "模型未配置") from None
+
+    stopped = False
+    retries_left = 2
+
+    def request(snippet: str, requirements: str) -> str:
+        nonlocal stopped, retries_left
+        if stopped:
+            raise ProviderStoppedError()
+        before = client.requests
+        client.max_requests = min(request_limit, before + 1 + int(retries_left > 0))
+        try:
+            return client.complete(snippet, requirements).text
+        except DeepSeekError as error:
+            if error.status in STOP_STATUSES or error.code == "REQUEST_LIMIT":
+                stopped = True
+            raise
+        finally:
+            retries_left -= max(0, client.requests - before - 1)
+
+    return make_injected_scorer(request)
+
+
+def _screen_and_save(uploads: List[UploadFile], project_scorer: Optional[str] = None) -> dict:
+    scorer = _make_deepseek_scorer(len(uploads)) if project_scorer == "deepseek" else None
     batch_id = uuid4().hex
     try:
         with TemporaryDirectory(prefix="screen-upload-") as directory:
@@ -92,7 +128,7 @@ def _screen_and_save(uploads: List[UploadFile]) -> dict:
                 with path.open("xb") as target:
                     copyfileobj(upload.file, target)
                 paths.append(path)
-            records = screen_many(paths)
+            records = screen_many(paths, project_scorer=scorer)
 
         db_path = _db_path()
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +158,9 @@ def demo() -> FileResponse:
         }},
     }}}},
 )
-async def create_batch(request: Request) -> dict:
+async def create_batch(request: Request, project_scorer: Optional[str] = None) -> dict:
+    if project_scorer not in (None, "deepseek"):
+        raise HTTPException(422, "项目评分方式不符合要求")
     if request.headers.get("content-type", "").partition(";")[0].strip().lower() != "multipart/form-data":
         raise HTTPException(422, INVALID_UPLOAD)
     parser = MultiPartParser(request.headers, _bounded_body(request), max_files=MAX_FILES, max_fields=0)
@@ -134,7 +172,7 @@ async def create_batch(request: Request) -> dict:
         raise HTTPException(500, "批次保存失败") from None
     try:
         uploads = _validated_uploads(form)
-        return await run_in_threadpool(_screen_and_save, uploads)
+        return await run_in_threadpool(_screen_and_save, uploads, project_scorer)
     finally:
         await form.close()
 
