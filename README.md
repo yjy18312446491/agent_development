@@ -122,6 +122,8 @@ curl.exe "http://127.0.0.1:8000/batches/$($batch.batch_id)"
 
 单次最多上传 10 份 PDF，每份最多 5 MiB，上传校验失败返回 `422`。同一批次文件名按大小写不敏感的方式查重。数据库默认保存在 `tmp/screen-results.sqlite`，可通过进程环境变量 `SCREEN_DB_PATH` 指定位置。上传原件在筛选结束后从临时目录清理。
 
+本地 HTTP 仅在显式提交 `POST /batches?project_scorer=deepseek` 时读取模型配置并注入 DeepSeek v2 项目评分，配置失败返回固定的 `503 / 模型未配置`，其他评分参数值返回中文 `422`。每批最多「文件数 + 2」次请求、最多 2 次瞬时重试；HTTP 400–404 或 `REQUEST_LIMIT` 后，后续应调用模型的文件进入 `REVIEW / PROVIDER_STOPPED / -1`，空项目段和本地拦截继续按原规则处理。批次可按原接口回查。此次接入通过假客户端验收，Demo 与缺省 HTTP 请求使用 Mock。
+
 ## Docker（可选）
 
 需要 Docker Engine 和 Compose。服务 `api` 以非 root 用户运行，监听容器内的 `127.0.0.1:8000`，并使用 Mock。Compose 无宿主机端口映射。SQLite 保存在命名卷 `screen-data` 中，容器内路径为 `/data/screen-results.sqlite`。

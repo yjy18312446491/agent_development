@@ -12,6 +12,10 @@ from app.route import JobPosting, RouteResult
 ProjectScorer = Callable[[str, CandidateProfile, JobPosting], int]
 
 
+class ProviderStoppedError(RuntimeError):
+    """Signal that this batch's provider is unavailable for later projects."""
+
+
 @dataclass(frozen=True)
 class ScoreBreakdown:
     skill: int
@@ -83,6 +87,8 @@ def score_candidate(
     if project_scorer is not None:
         try:
             project = project_scorer(text, profile, job)
+        except ProviderStoppedError:
+            return _review(jd_id, "PROVIDER_STOPPED", "本批次模型调用已停止，请人工复核")
         except Exception:
             return _review(jd_id, "PROJECT_SCORER_ERROR", "项目打分器执行失败")
         if not _valid_integer_score(project, 30):
