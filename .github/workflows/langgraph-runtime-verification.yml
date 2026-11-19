@@ -1,0 +1,147 @@
+name: LangGraph Docker runtime verification
+
+on:
+  push:
+    branches: [ci/langgraph-runtime-verification]
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      COMPOSE_PROJECT_NAME: resume-docker-verification
+      SOURCE_COMMIT: 6ad54cb009a64ecb5b51281a4e5ff0e803379332
+    steps:
+      - name: Verify the exact merged application commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init
+          git fetch --depth=1 https://github.com/yjy18312446491/agent_development.git "$SOURCE_COMMIT"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          docker version --format '{{.Server.Version}}'
+          docker compose version
+          docker compose config --format json | python3 -c 'import json, sys; api = json.load(sys.stdin)["services"]["api"]; assert not api.get("ports"); assert api["environment"]["SCREEN_DB_PATH"] == "/data/screen-results.sqlite"; print("Compose config: no published ports")'
+          trap 'docker compose logs --no-color; docker compose down' EXIT
+          docker compose up -d --build --wait
+          old_id=$(docker compose ps -q api)
+          test -n "$old_id"
+          test "$(docker compose exec -T api id -u)" = "1000"
+          docker compose exec -T api python -m pip check
+          docker compose exec -T api python - <<'PY'
+          from importlib.util import find_spec
+          from importlib.metadata import version
+          from pathlib import Path
+          from tempfile import TemporaryFile
+          from urllib.request import urlopen
+          import json
+
+          with urlopen("http://127.0.0.1:8000/health", timeout=5) as response:
+              assert response.status == 200 and json.load(response) == {"status": "ok"}
+          assert not Path("/data/screen-results.sqlite").exists()
+          with TemporaryFile(dir="/data") as probe:
+              probe.write(b"ok")
+          root = Path("/srv")
+          assert (root / "data/synthetic/jobs/jobs.json").is_file()
+          assert sorted(path.name for path in root.rglob("*.pdf")) == [
+              "S001_normal_backend.pdf", "S002_empty.pdf",
+          ]
+          assert not any((root / item).exists() for item in (".env", ".venv", ".git", "tests"))
+          assert find_spec("pytest") is None
+          # HTTPX is now a runtime dependency of the LangGraph SDK.
+          assert find_spec("httpx") is not None
+          expected = {
+              "langgraph": "0.6.11", "langchain-core": "0.3.76",
+              "langsmith": "0.4.37", "langgraph-checkpoint": "2.1.2",
+              "langgraph-prebuilt": "0.6.5", "langgraph-sdk": "0.2.9",
+          }
+          assert {name: version(name) for name in expected} == expected
+          from app.retrieval import retrieve_job_evidence
+          from app.route import load_jobs
+          from app.screen import screen_one
+          jobs = load_jobs()
+          assert retrieve_job_evidence(None, None).status == "DISABLED"
+          evidence = retrieve_job_evidence(
+              "synthetic query", jobs, enabled=True,
+              embedder=lambda texts: [(1.0, 0.0)] * len(texts),
+          )
+          assert evidence.status == "OK"
+          assert [hit.reference_jd_id for hit in evidence.hits] == ["JD1", "JD2", "JD3"]
+          baseline = screen_one(root / "data/synthetic/resumes/S001_normal_backend.pdf")
+          assert (baseline.score.jd_id, baseline.score.total, baseline.score.scores.project) == ("JD1", 60, 0)
+          print("Pinned LangGraph packages:", json.dumps(expected, sort_keys=True))
+          print("Graph Mock result JD1/60; retrieval disabled by default; fixed-vector evidence OK")
+          print("UID 1000: /data writable; health HTTP 200 without DB creation; image content verified")
+          PY
+          result=$(docker compose exec -T api python - <<'PY'
+          from contextlib import closing
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+          import json
+          import sqlite3
+
+          endpoint = "http://127.0.0.1:8000/batches"
+          root = Path("/srv/data/synthetic/resumes")
+          names = ["S001_normal_backend.pdf", "S002_empty.pdf"]
+
+          def request(files):
+              boundary = "docker-runtime-check"
+              parts = []
+              for name, content in files:
+                  header = (
+                      f'--{boundary}\r\nContent-Disposition: form-data; name="files"; filename="{name}"\r\n'
+                      "Content-Type: application/pdf\r\n\r\n"
+                  )
+                  parts.extend((header.encode("ascii"), content, b"\r\n"))
+              body = b"".join(parts) + f"--{boundary}--\r\n".encode("ascii")
+              return Request(endpoint, data=body, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+
+          with urlopen(request([(name, (root / name).read_bytes()) for name in names]), timeout=10) as response:
+              assert response.status == 200
+              created = json.load(response)
+          with urlopen(f"{endpoint}/{created['batch_id']}", timeout=10) as response:
+              assert json.load(response) == created
+          normal, empty = created["items"]
+          assert [item["source_name"] for item in created["items"]] == names
+          assert (normal["status"], normal["jd_id"], normal["tier"], normal["total"], normal["project_source"], normal["project"]) == (
+              "SCORED", "JD1", "B", 60, "mock", 0,
+          )
+          assert (empty["status"], empty["reason_code"], empty["total"], empty["tier"]) == (
+              "REVIEW", "EMPTY", -1, None,
+          )
+          assert all(empty[key] is None for key in ("skill", "project", "years", "education", "bonus"))
+          try:
+              urlopen(request([("../invalid.pdf", b"")]), timeout=10)
+          except HTTPError as error:
+              with error:
+                  assert error.code == 422
+          else:
+              raise AssertionError("Unsafe upload was accepted")
+          with closing(sqlite3.connect("/data/screen-results.sqlite")) as conn:
+              assert conn.execute("SELECT count(DISTINCT batch_id), count(*) FROM screen_results").fetchone() == (1, 2)
+          print(json.dumps(created, sort_keys=True, ensure_ascii=True))
+          PY
+          )
+          batch_id=$(jq -r '.batch_id' <<<"$result")
+          echo "POST/GET matched expected scores; unsafe upload returned 422; only one batch: $batch_id"
+          docker compose down
+          docker compose up -d --wait
+          new_id=$(docker compose ps -q api)
+          test -n "$new_id"
+          test "$old_id" != "$new_id"
+          after=$(docker compose exec -T api python - "$batch_id" <<'PY'
+          import json
+          import sys
+          from urllib.request import urlopen
+          with urlopen("http://127.0.0.1:8000/batches/" + sys.argv[1], timeout=10) as response:
+              assert response.status == 200
+              print(json.dumps(json.load(response), sort_keys=True, ensure_ascii=True))
+          PY
+          )
+          test "$after" = "$result"
+          echo "Recreated container $old_id -> $new_id; persisted batch and item order match"
