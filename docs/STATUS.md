@@ -29,12 +29,13 @@
 - `screen_one` 的本地 LangGraph 编排已通过 [PR #26](https://github.com/yjy18312446491/agent_development/pull/26) 合入 main，合并提交 `badbe18`，保留功能提交 `d890563` 和版本记录 `89364ed`。图复用抽取、闸门、岗位加载、画像、路由、评分和校验，沿用 `ScreenResult` 与 `BatchRecord`。图内异常进入人工复核，每次调用独立保存状态并关闭外部追踪。合入后复跑全量 310 项通过，Mock PDF 13/13、预览零请求；默认使用 Mock，本次未发送真实模型请求。
 - v0.3 已完成 8 份英文合成 PDF 的真实测评。5 次请求均取得合法评分，3 份按预期跳过，三项全匹配 3/5，项目分 MAE 1.4。复审记录两处分差，保留原标注。默认筛选继续使用 Mock。[实测记录](../eval/README.md#2026-11-19-实测复审)
 - 多 PDF 评测的 HTTP 400–404 及 `REQUEST_LIMIT` 停止逻辑已通过 PR #23 合入 main。后续应调用样本保留停止原因并记为未运行，跳过场景仍本地核对。全量 244 项测试和 Mock PDF 13/13 通过，预览零请求。
-- 本地 Docker Compose 配置已在 GitHub 托管 Linux 运行器实跑。Docker Engine 28.0.4、Compose v2.38.2，构建及镜像内 `pip check` 通过。UID 1000 可写 `/data`，健康检查未建库，镜像内确认岗位配置和两份合成 PDF。
+- Docker Compose 历史配置 `c908730` 已在 GitHub 托管 Linux 运行器实跑。Docker Engine 28.0.4、Compose v2.38.2，构建及镜像内 `pip check` 通过。UID 1000 可写 `/data`，健康检查未建库，镜像内确认岗位配置和两份合成 PDF。
 - 合成批次 `31baf778f8b64289981848835df00e5a` 的 POST 与 GET 返回一致，S001 为 `JD1 / B / 60 / mock`，S002 为 `REVIEW / EMPTY / -1`。非法上传返回 422，库中仍只有原批次。保留命名卷重建后，新容器 `43587a789d38` 代替原容器 `bc06079640b8`，用同一批次 ID 读回的内容与顺序一致。 [实测日志](https://github.com/yjy18312446491/agent_development/actions/runs/44243560755)
+
+- 2026-11-19 已对合入 LangGraph 与辅助检索的 main 源码 `6ad54cb` 完成 Linux/Compose 复验，CI 提交 `6367e2f`。固定 LangGraph 依赖、图编排默认 Mock、辅助检索默认关闭和假向量调用均通过；新批次 `18f269e2e05a40c0aa6a17f3fad292b1` 的上传、回查、非法上传 422 及保留卷重建通过。宿主机全量 344 项、Mock PDF 13/13、预览零请求通过。[最新日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [验证边界](CONTAINER_VALIDATION.md)
 
 ## 待完成
 
-- 新增 LangGraph 依赖后的容器构建与运行复验；已有 Linux 容器证据对应历史配置提交 `c908730`
 - Windows 宿主机 Docker Desktop 复验
 - 真实 Embedding 客户端、持久化向量索引及语义检索效果评测（当前仅完成默认关闭的接口和假向量验证）
 - 复审 v2 完整对照，补充更多合成项目样本的评测
