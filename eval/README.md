@@ -182,3 +182,15 @@
 - `team_api` 的结果标注是 7，实测 3。复审将交付仪表板认定为可描述的具体交付，保留标注 7。
 
 本轮保留冻结标注和提示词。报告 `eval/reports/live-pdf-20261118T155949482870Z.json` 仅保存在本地。结论适用于这 8 份英文合成 PDF，原 Mock PDF、v1/v2 合成片段对照和固定单份 PDF 冒烟各有独立口径。默认筛选继续使用 Mock。
+
+## 2026-11-19 本机 HTTP 联调
+
+在 `0183a12` 上使用冻结的 `personal_api.pdf`，经本机 `127.0.0.1` 的 FastAPI 完成 Mock 对照与一次显式 `POST /batches?project_scorer=deepseek`。共发出 1 次模型 HTTP 请求，0 重试。Mock 项目分 0、总分 60、B 档，模型传输计数为 0。
+
+显式请求得到 `SCORED / JD1 / injected`，三项分数为相关性 10、个人贡献 7、结果证据 7，项目分 **24**、总分 **84**、档位 **A**。技能 40、年限 15、学历 0、加分 5 与 Mock 相同。两次 POST 均可按批次 ID GET 原样回读，显式结果与 SQLite 记录一致。联调使用独立数据库，测试服务已关闭。
+
+模型与返回模型均为 `deepseek-flash`，提示词为 `project-score-v2`，温度 0、关闭思考，响应指纹为 `bc19ba97cbe016479903222bb1578db6`。输入 464 token、输出 61 token，显式 POST 端到端耗时 8,723 ms，实际费用未知。PDF SHA-256 为 `ddb248e46a3d8a93bb8da4a3a28493f7ba3cfd4faf3927957f1946efea08aa79`。
+
+人工标注保留 7/7/7、项目分 21、总分 81。实测的相关性高 3 分，与 v0.3 对同一份 PDF 的观察一致。该单样本结果用于验证 HTTP 评分、落库和回查链路。评测结果与标注分差照实保留。
+
+本地报告为 `eval/reports/http-deepseek-20261119T054044445855Z.json`。本次文档归档使用已有报告，默认筛选与 Demo 使用 Mock。
