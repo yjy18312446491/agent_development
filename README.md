@@ -16,7 +16,7 @@
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
-- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数，Embedding 检索待实现。
+- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数；辅助向量检索接口默认关闭，已用假向量验证，真实 Embedding 待验证。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -99,6 +99,31 @@ with closing(connect(output / "screen-results.sqlite")) as conn:
 ```
 
 同一批次内文件名必须唯一。重复写入会抛出 `sqlite3.IntegrityError`，该次写入全部回滚。回读按写入顺序返回。CSV 使用 UTF-8 BOM，复核记录的档位和五项分数留空。
+
+## 辅助检索（默认关闭）
+
+`retrieve_job_evidence` 是独立的辅助接口，显式开启并注入 embedder 后，按余弦相似度排序岗位原文证据。它返回参考岗位 ID，不参与 `screen_one`、LangGraph、FastAPI、Demo 或 Docker 的路由与评分。
+
+下面的假向量只演示接口，不能用于评价语义检索效果。无需新增依赖或密钥。
+
+```python
+from app.extract import extract_pdf
+from app.retrieval import retrieve_job_evidence
+from app.route import load_jobs
+
+text = extract_pdf("data/synthetic/resumes/S001_normal_backend.pdf").text
+jobs = load_jobs()
+assert retrieve_job_evidence(text, jobs).status == "DISABLED"
+
+def fake_embedder(texts):
+    return [(1.0, 0.0)] * len(texts)
+
+advice = retrieve_job_evidence(text, jobs, enabled=True, embedder=fake_embedder, top_k=2)
+print([(hit.reference_jd_id, hit.similarity) for hit in advice.hits])
+# 假向量全部相同，并列按 ID 排序：[("JD1", 1.0), ("JD2", 1.0)]
+```
+
+缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。真实 Embedding 客户端、持久化向量库和检索效果评测留待后续。[接口与测试边界](docs/RETRIEVAL.md)
 
 ## 运行本地 FastAPI
 

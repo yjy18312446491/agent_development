@@ -9,6 +9,7 @@ extract -> guard -> route -> score -> verify -> finalize
 - `extract` 负责 PDF 文本提取和基础字段抽取。
 - `guard` 接收 `ExtractResult`，负责文本质量和异常状态。空文件、读取失败、疑似图片或损坏、过短文本分别进入人工复核，复核结果使用 `score=-1`。通过闸门的结果保留 `score=None`，交给后续评分模块。当前文字质量规则无法区分“图片上只有少量中文提示语”的扫描件和真实过短文本，这类输入会按 `TOO_SHORT` 处理。没有文字层的图片 PDF 仍返回 `EMPTY`。
 - `route` 读取带稳定 `jd_id` 的岗位配置，按技能命中率和年限契合度计算确定性结果。方向信号冲突或最佳技能命中率低于 0.30 时返回 `UNMATCHED`，不调用模型，也不负责评分。
+- `retrieval.retrieve_job_evidence` 独立接收简历文本、岗位序列与显式注入的批量 embedder，默认 `enabled=False`。启用后将查询与岗位文本一次提交给提供器，校验向量数量、维数、有限数值和非零范数，以余弦相似度排序并返回只读证据。`reference_jd_id` 来自调用方岗位配置，不产生路由决定，也不写入 `ScreenResult` / `BatchRecord`。当前无筛选、图节点或 HTTP 接线，验证只使用假向量。[接口说明](RETRIEVAL.md)
 - `score` 按技能、项目、年限、学历和加分项计总分。默认筛选使用 Mock 项目分，DeepSeek 在显式评测入口注入。有效简历的路由结果为 `UNMATCHED` 时，仅保留学历分并返回 `SCORED`。Guard 拦截、岗位配置异常或评分失败时返回 `REVIEW` 和 `-1`。
 - `verify` 校验结果结构、分项范围、总分和岗位 ID，并检查 `UNMATCHED` 是否只保留学历分。合法的评分和复核结果原样通过，发现错误时返回新的 `REVIEW`、`-1` 和校验原因码。
 - `screen_one` 使用本地 LangGraph 调用已有抽取、闸门、岗位加载、画像、路由、评分和校验函数。闸门拦截时直接返回经过校验的复核结果。岗位配置失败也提前复核，通过时可使用默认岗位或调用方提供的岗位序列。图的返回值沿用 `ScreenResult`，批量包装沿用 `BatchRecord`。
