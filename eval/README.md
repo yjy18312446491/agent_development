@@ -194,3 +194,13 @@
 人工标注保留 7/7/7、项目分 21、总分 81。实测的相关性高 3 分，与 v0.3 对同一份 PDF 的观察一致。该单样本结果用于验证 HTTP 评分、落库和回查链路。评测结果与标注分差照实保留。
 
 本地报告为 `eval/reports/http-deepseek-20261119T054044445855Z.json`。本次文档归档使用已有报告，默认筛选与 Demo 使用 Mock。
+
+## Embedding 离线客户端预览
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_embedding_eval
+```
+
+该入口校验冻结清单、PDF 和本地闸门，只预览 3 个岗位文档向量、7 个查询向量的计划，`short_gate` 本地跳过，零 HTTP。报告仅写入被忽略的 `eval/reports/`，默认不读模型配置；本版本的 `--live` 被强制拒绝。
+
+urllib 百炼客户端和按角色/文本 SHA 缓存以假 HTTP 验证：固定北京 `text-embedding-v4`、1024 维，先两批预取，随后 7 组排序只读缓存。真实 10 向量冒烟尚未运行，不将路由标签或项目分作为语义检索金标。[配置、预算与验证边界](../docs/RETRIEVAL.md#百炼客户端离线接入阶段)

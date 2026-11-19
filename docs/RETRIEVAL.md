@@ -45,4 +45,32 @@
 
 最后一条命令仅预览，不带 `--live`。专项测试使用固定向量验证排序、并列、负相似度、top-k、证据映射、默认关闭、单次提供器调用、参数与异常回包、数值边界。真实 PDF 对照故意将 JD3 排第一，检查正常样本仍为 `JD1 / 60`，无匹配样本仍为 `UNMATCHED / 0`，项目分仍为 0。
 
-这些测试验证接口契约和隔离性，不能作为真实语义召回质量的指标。真实 embedder、模型版本、索引更新、阈值、检索评测和生产接线均待后续阶段。
+这些测试验证接口契约和隔离性，不能作为真实语义召回质量的指标。真实向量冒烟、索引更新、阈值、检索质量评测和生产接线均待后续阶段。
+
+## 百炼客户端：离线接入阶段
+
+`app/embedding_client.py` 已提供独立的 urllib 客户端，以假 HTTP 验证原生 DashScope 协议；`app/embedding_cache.py` 提供预取与缓存。它们未进入筛选、图节点、FastAPI、Demo 或 Docker 默认路径。本阶段没有真实模型请求，现有 `retrieve_job_evidence` 行为不变。
+
+配置仅由显式调用 `EmbeddingConfig.from_env_file(Path(...))` 读取，默认预览不读 `.env`。只读取 `EMBEDDING_PROVIDER`、`EMBEDDING_API_KEY`、`EMBEDDING_MODEL`、`EMBEDDING_BASE_URL`、`EMBEDDING_DIMENSION` 和 `EMBEDDING_REGION`，不回退到 `LLM_API_KEY`。固定百炼北京、`text-embedding-v4`、dense、1024 维。域名只允许北京经典域名或单层业务空间的 `cn-beijing.maas.aliyuncs.com` 地址；拒绝重定向、凭据 URL、端口、查询参数和其它地域。配置 repr、异常与报告不包含 Key 或工作空间地址。
+
+客户端每批最多 10 条，本轮还采用**每条最多 2048 UTF-8 字节**的保守短文本限制，超限本地拒绝，不截断。它不是精确的 Qwen Token 计数器，也没有声称完整支持 8192 Token 长输入；现有 3 份 JD 与 7 份查询都满足此限制。未来放宽需另外接入并验证对应 tokenizer。[官方 API 规格](https://help.aliyun.com/zh/model-studio/text-embedding-synchronous-api/)
+
+传输层每次调用只尝试一次，拒绝第 4 次 HTTP。全轮缓存层共用一次瞬时重试机会；HTTP 400–404、HTTP 200 的提供器错误码、非法向量或未知 usage 立即停止。返回值包含冻结的模型、角色、文本 SHA、维数、向量、HTTP 状态、延迟和用量；原生响应的 `text_index` / `index` 用于恢复顺序，缺失、重复、冲突或越界均拒绝。失败回包能校验出有效 usage 时保留其值，未知用量和费用用 `null`，不写成 0。
+
+缓存以 `(document/query, 文本 SHA)` 为键，角色不同不能互相复用。只有 `embed_documents` / `embed_queries` 能预取；`as_retriever_embedder()` 只查缓存，缺失时抛固定错误，不能补发 HTTP。先 3 条 document、再 7 条 query，之后 7 次检索均在本地完成；同一角色的重复 SHA 不重复请求。客户端与缓存用于**单轮顺序执行**，不跨轮复用或并发共享。
+
+全轮除 3 次请求上限外，还按每次输入条数 × 8192 Token × 北京同步单价预留最坏费用，预留超过 ¥0.10 就在发请求前拒绝。超时的潜在费用仍占预留额。实际估算按提供器的有效 usage 和 ¥0.0005/千 Token 计算；任何尝试用量未知时，总用量与总费用记未知。该值是公开单价估算，不是实付账单。[官方模型价格](https://help.aliyun.com/zh/model-studio/text-embedding-v4)
+
+## 冻结数据预览与报告
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_embedding_eval
+```
+
+默认只校验清单 SHA 与各 PDF SHA、本地抽取及闸门，预览 3 个岗位与 7 个查询向量计划；`short_gate` 本地跳过。无需 Key，不创建客户端。报告只写到被 Git 忽略的 `eval/reports/`。此版本即使带 `--live` 也直接失败退出，待 Cursor 复审及用户另行确认本机配置后再做真实冒烟。
+
+清单在本机 CRLF 工作区的冻结 SHA 是 `647d4327...`，同一 Git 提交的 LF 文件 SHA 是 `2b179f2e...`。入口只接受这两个已核对的精确值；其它字节改动均拒绝。报告同时写出实际 `manifest_sha256` 与 CRLF 冻结标识 `frozen_manifest_sha256`，不把换行转译说成样本变更。PDF 继续逐文件核对原 SHA。
+
+`evaluate_injected` 仅供显式注入的传输层做离线集成测试：假 HTTP 测试完成两批预取和 7 组本地排序。报告把传输方式标为 `injected-transport`，不猜测外部注入对象是否真的发网，因此 `real_http_requests` 为 `null`；默认预览明确为 0。排序仅作为观察，不以已有规则路由或项目分标签计算语义准确率。报告包含 SHA、每次状态、usage、延迟、估算费用和参考 ID 排序，不包含原始向量、密钥或完整 URL。
+
+配置和假回包客户端已实现，真实 10 向量冒烟尚未运行。后续范围仍受 2 次首发、整轮最多 1 次重试、总 HTTP 不超过 3 次、¥0.10 预算约束。
