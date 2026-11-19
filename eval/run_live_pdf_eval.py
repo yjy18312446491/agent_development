@@ -15,6 +15,7 @@ from typing import List, Optional, Sequence, Tuple
 from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, PROMPT_VERSION_V2, TEMPERATURE
 from app.project_scorer import DIMENSIONS, POINT_LEVELS, make_injected_scorer
 from app.screen import screen_many
+from eval.run_deepseek_pilot import STOP_STATUSES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,7 +99,16 @@ def load_cases() -> Tuple[List[PreparedCase], str]:
     return cases, sha256(contents.encode("utf-8")).hexdigest()
 
 
-def _run_case(case: PreparedCase, client: DeepSeekClient, allow_retry: bool) -> dict:
+def _run_case(
+    case: PreparedCase, client: DeepSeekClient, allow_retry: bool, *, stop_failure: Optional[dict] = None
+) -> dict:
+    if stop_failure is not None and case.model_input is not None:
+        return {
+            "case_id": case.label["id"], "expected": case.label, "mock": case.mock, "live": None,
+            "outcome": "not_run", "failure": dict(stop_failure), "requests": 0, "retries": 0,
+            "latency_ms": None, "transport": None, "project_dimensions": None,
+            "project_absolute_error": None, "end_to_end_total_delta": None, "full_match": None,
+        }
     completion = None
     failure = None
     before = client.requests
@@ -173,11 +183,17 @@ def _commit() -> Optional[str]:
 def run_live(cases: Sequence[PreparedCase], manifest_sha: str, client: DeepSeekClient, model: str) -> dict:
     rows = []
     retries = 0
+    stop_failure = None
     first = sum(case.model_input is not None for case in cases)
     started = datetime.now(timezone.utc).isoformat()
     commit = _commit()
     for case in cases:
-        row = _run_case(case, client, allow_retry=retries < RETRY_BUDGET)
+        row = _run_case(case, client, allow_retry=retries < RETRY_BUDGET, stop_failure=stop_failure)
+        failure = row["failure"]
+        if failure is not None and (
+            failure["http_status"] in STOP_STATUSES or failure["code"] == "REQUEST_LIMIT"
+        ):
+            stop_failure = failure
         retries += row["retries"]
         rows.append(row)
 
