@@ -205,3 +205,5 @@ docker compose exec -T api python -c "import urllib.request; print(urllib.reques
 ```
 
 2026-11-18 已在 GitHub 托管 Linux 运行器上验证 `c908730`，使用 Docker Engine 28.0.4 和 Compose v2.38.2。构建、健康检查、合成 PDF 上传、非法上传 422 和重建回读均通过。Windows 宿主机的 Docker Desktop 尚未验收。 [容器验收日志](https://github.com/yjy18312446491/agent_development/actions/runs/44243560755)
+
+2026-11-19 已复验包含 LangGraph 和辅助检索接口的 main 源码 `6ad54cb`：镜像构建、固定依赖、非 root 权限、Mock 上传、SQLite 回读和保留卷重建全部通过。检索默认关闭，假向量调用验证通过，未调用真实模型或 Embedding。Windows Desktop 仍待验收。[最新容器日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [验证范围与复现说明](docs/CONTAINER_VALIDATION.md)
