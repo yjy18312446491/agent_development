@@ -32,7 +32,7 @@
 - Docker Compose 历史配置 `c908730` 已在 GitHub 托管 Linux 运行器实跑。Docker Engine 28.0.4、Compose v2.38.2，构建及镜像内 `pip check` 通过。UID 1000 可写 `/data`，健康检查未建库，镜像内确认岗位配置和两份合成 PDF。
 - 合成批次 `31baf778f8b64289981848835df00e5a` 的 POST 与 GET 返回一致，S001 为 `JD1 / B / 60 / mock`，S002 为 `REVIEW / EMPTY / -1`。非法上传返回 422，库中仍只有原批次。保留命名卷重建后，新容器 `43587a789d38` 代替原容器 `bc06079640b8`，用同一批次 ID 读回的内容与顺序一致。 [实测日志](https://github.com/yjy18312446491/agent_development/actions/runs/44243560755)
 
-- 2026-11-19 已对合入 LangGraph 与辅助检索的 main 源码 `6ad54cb` 完成 Linux/Compose 复验，CI 提交 `6367e2f`。固定 LangGraph 依赖、图编排默认 Mock、辅助检索默认关闭和假向量调用均通过；新批次 `18f269e2e05a40c0aa6a17f3fad292b1` 的上传、回查、非法上传 422 及保留卷重建通过。宿主机全量 344 项、Mock PDF 13/13、预览零请求通过。[最新日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [验证边界](CONTAINER_VALIDATION.md)
+- 2026-11-19 已对合入 LangGraph 与辅助检索的 main 源码 `6ad54cb` 完成 Linux/Compose 复验，CI 提交 `6367e2f`。验证文档已通过 [PR #28](https://github.com/yjy18312446491/agent_development/pull/28) 合入 main，合并提交 `ef26cb6`，保留 `9652a61`、`84d9186`；CI 分支继续独立保留。固定 LangGraph 依赖、图编排默认 Mock、辅助检索默认关闭和假向量调用均通过；新批次 `18f269e2e05a40c0aa6a17f3fad292b1` 的上传、回查、非法上传 422 及保留卷重建通过。宿主机全量 344 项、Mock PDF 13/13、预览零请求通过。[最新日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [验证边界](CONTAINER_VALIDATION.md)
 
 ## 待完成
 
