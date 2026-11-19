@@ -9,6 +9,12 @@ description = "A testable AI application for resume and job matching"
 requires-python = ">=3.9"
 dependencies = [
     "PyMuPDF>=1.24,<2",
+    "langgraph==0.6.11",
+    "langchain-core==0.3.76",
+    "langsmith==0.4.37",
+    "langgraph-checkpoint==2.1.2",
+    "langgraph-prebuilt==0.6.5",
+    "langgraph-sdk==0.2.9",
 ]
 
 [tool.pytest.ini_options]

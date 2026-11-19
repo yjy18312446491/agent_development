@@ -16,7 +16,7 @@
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
-- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 编排和 Embedding 检索待实现。
+- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数，Embedding 检索待实现。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -101,6 +101,8 @@ with closing(connect(output / "screen-results.sqlite")) as conn:
 同一批次内文件名必须唯一。重复写入会抛出 `sqlite3.IntegrityError`，该次写入全部回滚。回读按写入顺序返回。CSV 使用 UTF-8 BOM，复核记录的档位和五项分数留空。
 
 ## 运行本地 FastAPI
+
+筛选入口使用本地 LangGraph 编排，项目依赖固定为支持 Python 3.9 的 `langgraph==0.6.11` 及已验证的配套版本。图复用现有规则函数，每次执行使用独立状态并关闭外部追踪。[包版本信息](https://pypi.org/project/langgraph/0.6.11/)
 
 在仓库根目录使用项目虚拟环境安装依赖并启动。服务仅用于本机，监听 `127.0.0.1`，评分默认使用 Mock。
 
