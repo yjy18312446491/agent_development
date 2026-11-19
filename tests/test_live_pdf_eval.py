@@ -148,3 +148,76 @@ def test_live_cli_keeps_a_new_report_per_invocation(monkeypatch, tmp_path):
         contents = report_path.read_text(encoding="utf-8")
         assert "test-only" not in contents and "Fictional Linden" not in contents
         assert json.loads(contents)["valid"] == 5
+
+
+@pytest.mark.parametrize("status", [400, 401, 402, 403, 404, None])
+@pytest.mark.parametrize("stop_at", [1, 2])
+def test_permanent_failure_stops_later_completions_but_preserves_skips(monkeypatch, plan, status, stop_at):
+    cases, manifest_sha = plan
+    attempts = []
+    completions = []
+    failure = {"code": "HTTP_ERROR" if status is not None else "REQUEST_LIMIT", "http_status": status}
+
+    def respond(request):
+        attempts.append(request)
+        if len(attempts) == stop_at:
+            raise DeepSeekError("HTTP_ERROR", status=status)
+        return _fake_completion(request)
+
+    client = _client(monkeypatch, respond)
+    original_complete = client.complete
+
+    def complete(snippet, requirements):
+        completions.append(snippet)
+        if status is None and len(completions) == stop_at:
+            raise DeepSeekError("REQUEST_LIMIT")
+        return original_complete(snippet, requirements)
+
+    monkeypatch.setattr(client, "complete", complete)
+    report = evaluator.run_live(cases, manifest_sha, client, "test-model")
+
+    assert len(completions) == stop_at
+    assert len(attempts) == report["requests"] == stop_at - int(status is None)
+    assert report["retries"] == 0
+    assert len(report["cases"]) == 8
+    assert report["valid"] == report["project_metrics_denominator"] == stop_at - 1
+    assert report["success_denominator"] == 5
+    assert report["failed"] == 1 and report["not_run"] == 5 - stop_at
+    assert report["skipped"] == report["expected_skips"] == 3
+    assert all(row["outcome"] == "valid" for row in report["cases"][:stop_at - 1])
+    failed = report["cases"][stop_at - 1]
+    assert failed["failure"] == failure
+    assert failed["live"]["status"] == "REVIEW"
+    assert failed["live"]["reason_code"] == "PROJECT_SCORER_ERROR"
+    assert failed["live"]["total"] == -1
+    assert failed["live"]["scores"] is None and failed["live"]["tier"] is None
+
+    for row, case in zip(report["cases"][stop_at:5], cases[stop_at:5]):
+        assert row["outcome"] == "not_run" and row["failure"] == failure
+        assert row["requests"] == row["retries"] == 0
+        assert row["live"] is None and row["transport"] is None
+        assert row["project_dimensions"] is None and row["full_match"] is None
+        assert row["expected"] == case.label and row["mock"] == case.mock
+    for row, case in zip(report["cases"][5:], cases[5:]):
+        assert row["outcome"] == "skipped" and row["requests"] == 0
+        assert row["live"]["total"] == case.mock["total"]
+        assert row["live"]["status"] == case.mock["status"]
+        assert row["live"]["reason_code"] == case.mock["reason_code"]
+
+
+@pytest.mark.parametrize("status", [401, 402])
+def test_account_stop_cli_returns_failure_and_writes_all_rows(monkeypatch, tmp_path, status):
+    attempts = []
+
+    def respond(request):
+        attempts.append(request)
+        raise DeepSeekError("HTTP_ERROR", status=status)
+
+    monkeypatch.setattr(DeepSeekConfig, "from_env_file", lambda path: DeepSeekConfig("test-only"))
+    _client(monkeypatch, respond)
+    monkeypatch.setattr(evaluator, "REPORT_DIR", tmp_path)
+    assert evaluator.main(["--live"]) == 1
+    report = json.loads(next(tmp_path.glob("live-pdf-*.json")).read_text(encoding="utf-8"))
+    assert report["requests"] == len(attempts) == 1
+    assert report["failed"] == 1 and report["not_run"] == 4 and report["skipped"] == 3
+    assert len(report["cases"]) == 8
