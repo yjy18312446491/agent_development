@@ -34,12 +34,12 @@
 
 - 2026-11-19 已对合入 LangGraph 与辅助检索的 main 源码 `6ad54cb` 完成 Linux/Compose 复验，CI 提交 `6367e2f`。验证文档已通过 [PR #28](https://github.com/yjy18312446491/agent_development/pull/28) 合入 main，合并提交 `ef26cb6`，保留 `9652a61`、`84d9186`；CI 分支继续独立保留。固定 LangGraph 依赖、图编排默认 Mock、辅助检索默认关闭和假向量调用均通过；新批次 `18f269e2e05a40c0aa6a17f3fad292b1` 的上传、回查、非法上传 422 及保留卷重建通过。宿主机全量 344 项、Mock PDF 13/13、预览零请求通过。[最新日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [验证边界](CONTAINER_VALIDATION.md)
 
-- 百炼 Embedding 离线客户端与 SHA 缓存已通过 [PR #29](https://github.com/yjy18312446491/agent_development/pull/29) 合入 main，合并提交 `2793072`，保留 `0018fe7`、`5265a6e`。合入后全量 421 项、Mock PDF 13/13、Embedding 预览零 HTTP 通过；默认关闭、未接线，真实请求 0，`--live` 仍强制禁用。[客户端边界](RETRIEVAL.md#百炼客户端离线接入阶段)
+- 百炼 Embedding 离线客户端与 SHA 缓存已通过 [PR #29](https://github.com/yjy18312446491/agent_development/pull/29) 合入 main，合并提交 `2793072`，保留 `0018fe7`、`5265a6e`。该次合入后全量 421 项、Mock PDF 13/13、Embedding 预览零 HTTP 通过；默认关闭、未接线，真实请求 0，合入当时 `--live` 仍强制禁用。[客户端边界](RETRIEVAL.md#百炼客户端离线接入阶段)
 
 ## 待完成
 
 - Windows 宿主机 Docker Desktop 复验
-- 真实 10 向量冒烟尚未运行：需下一步固定 jobs.json SHA，用户确认本机已配置独立百炼 Key 后单独交接；当前 CLI 仍拒绝 live。持久化向量索引及语义检索效果评测待后续。
+- 受控 Embedding live 入口已准备：固定 jobs/JD/查询抽取文本 SHA，默认预览零请求，显式 live 经预检后独占创建并保留请求锁。新增 27 项假 HTTP 测试，全量 448 项通过；真实 10 向量冒烟尚未运行，需复审及用户确认本机独立百炼配置后单独授权执行。持久化向量索引及语义检索效果评测待后续。[入口与报告边界](RETRIEVAL.md#受控-live-入口仅完成假-http-验证)
 - 复审 v2 完整对照，补充更多合成项目样本的评测
 
 ## 指标口径

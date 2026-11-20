@@ -201,6 +201,8 @@
 .\.venv\Scripts\python.exe -m eval.run_embedding_eval
 ```
 
-该入口校验冻结清单、PDF 和本地闸门，只预览 3 个岗位文档向量、7 个查询向量的计划，`short_gate` 本地跳过，零 HTTP。报告仅写入被忽略的 `eval/reports/`，默认不读模型配置；本版本的 `--live` 被强制拒绝。
+该入口校验冻结清单、jobs/JD/查询文本 SHA、PDF 和本地闸门，默认只预览 3 个岗位文档向量、7 个查询向量的计划，`short_gate` 本地跳过，零 HTTP。报告仅写入被忽略的 `eval/reports/`，默认不读模型配置。显式 `--live` 受控入口已准备，仅以临时假配置和假 HTTP 验证，真实冒烟未运行。
 
 urllib 百炼客户端和按角色/文本 SHA 缓存以假 HTTP 验证：固定北京 `text-embedding-v4`、1024 维，先两批预取，随后 7 组排序只读缓存。真实 10 向量冒烟尚未运行，不将路由标签或项目分作为语义检索金标。[配置、预算与验证边界](../docs/RETRIEVAL.md#百炼客户端离线接入阶段)
+
+live 预检还检查报告路径与写入能力，在任何 HTTP 前独占创建并保留 `eval/reports/embedding-live.lock`。已有锁、永久错误、预算/尝试耗尽或中断均不允许自动重跑。最终报告的 `counts_final=true` 才表示计数已汇总；不完整的 ARMED 报告不能证明实际零请求。不得为换一轮三次配额自行删锁。[受控入口说明](../docs/RETRIEVAL.md#受控-live-入口仅完成假-http-验证)
