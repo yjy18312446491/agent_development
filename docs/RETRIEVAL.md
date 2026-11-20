@@ -67,10 +67,28 @@
 .\.venv\Scripts\python.exe -m eval.run_embedding_eval
 ```
 
-默认只校验清单 SHA 与各 PDF SHA、本地抽取及闸门，预览 3 个岗位与 7 个查询向量计划；`short_gate` 本地跳过。无需 Key，不创建客户端。报告只写到被 Git 忽略的 `eval/reports/`。此版本即使带 `--live` 也直接失败退出，待 Cursor 复审及用户另行确认本机配置后再做真实冒烟。
+默认校验冻结数据、本地抽取及闸门，预览 3 个岗位与 7 个查询向量计划；`short_gate` 本地跳过。无需 Key，不创建客户端。报告只写到被 Git 忽略的 `eval/reports/`。PR #29 合入版本曾无条件拒绝 `--live`，后续受控入口见下节；本次实现仍未发送真实请求。
 
 清单在本机 CRLF 工作区的冻结 SHA 是 `647d4327...`，同一 Git 提交的 LF 文件 SHA 是 `2b179f2e...`。入口只接受这两个已核对的精确值；其它字节改动均拒绝。报告同时写出实际 `manifest_sha256` 与 CRLF 冻结标识 `frozen_manifest_sha256`，不把换行转译说成样本变更。PDF 继续逐文件核对原 SHA。
 
 `evaluate_injected` 仅供显式注入的传输层做离线集成测试：假 HTTP 测试完成两批预取和 7 组本地排序。报告把传输方式标为 `injected-transport`，不猜测外部注入对象是否真的发网，因此 `real_http_requests` 为 `null`；默认预览明确为 0。排序仅作为观察，不以已有规则路由或项目分标签计算语义准确率。报告包含 SHA、每次状态、usage、延迟、估算费用和参考 ID 排序，不包含原始向量、密钥或完整 URL。
 
 配置和假回包客户端已实现，真实 10 向量冒烟尚未运行。后续范围仍受 2 次首发、整轮最多 1 次重试、总 HTTP 不超过 3 次、¥0.10 预算约束。
+
+## 受控 live 入口：仅完成假 HTTP 验证
+
+`eval/run_embedding_eval.py` 已准备显式 `--live` 路径。默认命令不变，仍只预览、不读 Key、零 HTTP。本次开发和测试没有对真实 `.env` 执行 live；需 Draft PR 经复审、用户确认独立百炼配置并授权实际调用后，另行安排真实冒烟。
+
+HTTP 前先检查数据：`jobs.json` 只允许工作区 CRLF SHA `0e1b05846f3ad13492dacbaa3a3f0ded2a1402b329b5b71c2ac94c48eb973e09` 或 Git LF SHA `b6d1be6785bdd7255a1118facaf71c51462ec1544293d875049c13cbf7bb8367`。还会逐一比对 `DOCUMENT_SHAS` 中的 3 份岗位文本、`QUERY_SHAS` 中的 7 份抽取文本及查询顺序，保留清单/PDF 校验和 2048 字节限制。固定值位于评测模块，不会为迁就变化而自动更新。
+
+只有显式 live 分支才读取本机 `EMBEDDING_*` 配置。数据、配置、报告路径与写入能力预检全部完成后，以独占创建方式写入 `eval/reports/embedding-live.lock`，flush/fsync 完成后才构造客户端。锁存在即拒绝，不覆盖原锁；成功、失败和中断后都不自动删除锁。没有 force、自动重跑或换客户端刷新配额的入口。
+
+持锁后复用同一个 `EmbeddingCache`，先 3 条 document、再 7 条 query，随后 7 次排序只查缓存。应用传输层和缓存原有的三次尝试、一次重试与 ¥0.10 预留约束不变；错误会停止后续请求并以非零状态退出。预检失败不发 HTTP。
+
+live 报告使用独立 `embedding-live-*.json` 文件，不覆盖 preview 或已有 live 目标；默认预览也拒绝写入 live 文件名。报告包含 run ID、源码提交、状态、文本/文件 SHA、尝试历史、usage、费用预留和排序。live 的 `real_http_requests` 是客户端记录的本次 urllib **尝试次数**，为整数，不代表成功响应数或已确认收费次数；测试中该分支使用假 opener。
+
+首发前先写 `ARMED / counts_final=false` 初始报告，再落锁。正常结束后原子替换为 `SUCCESS`、`FAILED` 或 `INTERRUPTED`，设置 `counts_final=true`；未进入 HTTP 的预检失败记 `NOT_STARTED`。网络中断可能只有尝试数而无完整回包，`unaccounted_attempts` 标明尚无历史条目的尝试，用量/费用记未知，不能记成免费。
+
+若进程被强制终止或最终报告写入失败，可能只留下 `ARMED / counts_final=false` 文件；其初始 0 不是“实际零请求”的证明。锁仍保留，CLI 非零退出，不可自行删除锁再跑。报告目录在预检时不可写则直接拒绝 HTTP；若执行后磁盘故障导致无法保存最终报告，保留锁和已有证据，先人工复核实际消耗。报告存于 Git 忽略目录，不提交 Key、工作空间地址、原始异常或向量。
+
+入口验收新增 27 项测试（临时假配置及假 HTTP）：锁先于 HTTP、重复启动拒绝、冻结文本变化拒绝、报告路径/写入失败、401/未知 usage、共享重试额度、中断及脱敏。原来“live 无条件拒绝”的一项测试改为“数据预检失败早于 Key 读取”；默认预览零请求测试保留。当前全量 448 项、Mock PDF 13/13 通过，真实请求仍为 0。

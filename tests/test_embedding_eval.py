@@ -96,14 +96,18 @@ def test_preview_never_reads_credentials_or_creates_http_client(monkeypatch, tmp
     assert report["http_attempts"] == report["real_http_requests"] == 0
 
 
-def test_live_switch_fails_before_dataset_or_credentials(monkeypatch, capsys):
-    def forbidden():
-        pytest.fail("Live switch must be refused before any work")
+def test_live_dataset_failure_precedes_credentials(monkeypatch, capsys, tmp_path):
+    def invalid():
+        raise ValueError("invalid frozen data")
 
-    monkeypatch.setattr(runner, "load_plan", forbidden)
-    with pytest.raises(SystemExit) as error:
-        runner.main(["--live"])
-    assert error.value.code == 2 and runner.LIVE_FORBIDDEN in capsys.readouterr().err
+    def forbidden(*args):
+        pytest.fail("Invalid data must be rejected before credentials")
+
+    monkeypatch.setattr(runner, "load_plan", invalid)
+    monkeypatch.setattr(EmbeddingConfig, "from_env_file", forbidden)
+    monkeypatch.setattr(runner, "REPORT_DIR", tmp_path)
+    assert runner.main(["--live"]) == 2
+    assert "预检失败" in capsys.readouterr().err
 
 
 def test_report_must_stay_under_ignored_reports_directory(tmp_path):
