@@ -36,10 +36,12 @@
 
 - 百炼 Embedding 离线客户端与 SHA 缓存已通过 [PR #29](https://github.com/yjy18312446491/agent_development/pull/29) 合入 main，合并提交 `2793072`，保留 `0018fe7`、`5265a6e`。该次合入后全量 421 项、Mock PDF 13/13、Embedding 预览零 HTTP 通过；默认关闭、未接线，真实请求 0，合入当时 `--live` 仍强制禁用。[客户端边界](RETRIEVAL.md#百炼客户端离线接入阶段)
 
+- 受控 Embedding live 入口已通过 [PR #30](https://github.com/yjy18312446491/agent_development/pull/30) 合入 main，合并提交 `a1b5d02`，双亲 `b2cb9c6`、`3b0d3cc`，保留功能提交 `50c530b` 和版本记录 `3b0d3cc`；合并树与审核版本一致。合入后在 main 复跑全量 448 项、Mock PDF 13/13、默认 Embedding 预览零 HTTP 通过。固定 SHA、整轮最多 3 次 HTTP / 1 次重试 / ¥0.10 预留及请求锁保留机制不变；默认预览，检索未接线，本次真实请求 0。
+
 ## 待完成
 
 - Windows 宿主机 Docker Desktop 复验
-- 受控 Embedding live 入口已准备：固定 jobs/JD/查询抽取文本 SHA，默认预览零请求，显式 live 经预检后独占创建并保留请求锁。新增 27 项假 HTTP 测试，全量 448 项通过；真实 10 向量冒烟尚未运行，需复审及用户确认本机独立百炼配置后单独授权执行。持久化向量索引及语义检索效果评测待后续。[入口与报告边界](RETRIEVAL.md#受控-live-入口仅完成假-http-验证)
+- 真实 10 向量冒烟尚未运行：PR #30 入口已复审并合入，仍需用户确认本机独立百炼配置后单独授权执行。默认预览零请求，请求锁不自动清除；持久化向量索引及语义检索效果评测待后续。[入口与报告边界](RETRIEVAL.md#受控-live-入口仅完成假-http-验证)
 - 复审 v2 完整对照，补充更多合成项目样本的评测
 
 ## 指标口径
