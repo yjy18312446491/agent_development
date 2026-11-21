@@ -44,10 +44,10 @@
 
 - 12 条独立中文合成查询及 36 条相关性标签已获得 [Cursor 更正补审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056976801)，假向量离线评测已通过 PR #33 合入 `d00a31e`。独立复审记录与评测前输入指纹已获 [#34 补审通过](https://github.com/yjy18312446491/agent_development/pull/34#issuecomment-7058205770)，经用户授权以 merge commit `cac1216` 合入 main，双亲 `d00a31e` / `18695bb`，树与审查 head 相同，保留原提交关系。原标签 JSON/SHA 和历史编写状态不变；APPROVED 只指标签复审，模型质量仍待验证，原锁保留。[评测规范](RETRIEVAL_EVAL.md)
 
-- `eval.run_retrieval_baseline` 已获 [#35 最终补审通过](https://github.com/yjy18312446491/agent_development/pull/35#issuecomment-7058206435)。#34 合入后转向 main，8 文件及补丁与转向前完全一致，head 仍为 `b1ba9e7`；经用户授权 Ready 并 Squash 合入 `f870f48`，唯一父提交为 `cac1216`，树与已审/已测 head 相同，本机同步完成。沿用已授权的全量 588 项、专项 56 项及 Mock PDF 13/13 验收；本次合入后零请求预览、源码/合并树及旧报告/锁 SHA 核对通过。默认 Mock、辅助检索关闭；15 向量/3 HTTP/零重试/¥0.10 的新轮真实执行仍未授权，新轮锁不存在，真实质量和产品接线未完成。[受控入口](RETRIEVAL_EVAL.md#独立基线入口已合入真实执行未授权)
+- `eval.run_retrieval_baseline` 已获 [#35 最终补审通过](https://github.com/yjy18312446491/agent_development/pull/35#issuecomment-7058206435)，在 #34 merge commit `cac1216` 合入后，经用户授权转向 main 并 Squash 为 `f870f48`，树与已审/已测 `b1ba9e7` 相同；历史入口验收为全量 588 项、专项 56 项、Mock 13/13。2026-11-21 用户另行授权 15 向量/最多 3 HTTP/零重试/¥0.10；在 `9bc16b6` 实际运行一轮 SUCCESS：3 HTTP、0 重试、624 token，估算 ¥0.000312（账单未核验），预留 ¥0.06144。Recall@1=8/9、Recall@3=9/9（分母仅 9 条有相关岗位查询，另 3 条无相关查询为 null），RV005 错排。结果待 Cursor 复审，不代表质量通过；新旧锁和原报告保留，默认 Mock、检索关闭，jd_id/评分/标签不变，不追加请求。[实测及边界](RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线待-cursor-结果复审)
 
 - Windows 宿主机 Docker Desktop 复验（可选，不阻塞检索质量主线）
-- 基于独立相关性标注的语义检索质量评测、持久化向量索引及产品接线仍待后续。真实 10 向量传输冒烟已完成；默认预览零请求，请求锁保留，不能沿用剩余尝试次数自行重跑，新实验须另定范围与预算。[入口与报告边界](RETRIEVAL.md#受控-live-入口与验证边界)
+- 按可演示完整交付仍有 3 个收尾里程碑：① 本轮质量复审和独立样本验证；② 可重用本地向量索引及默认关闭的辅助证据接线；③ 最终版本的干净安装/集成/容器/Demo 验收与发布材料。当前独立基线只给小样本描述性结果，不改变规则路由；新增真实实验另行审范围与预算，不重跑已结束轮次。[剩余完成标准](RETRIEVAL_EVAL.md#距离可演示完整交付的剩余里程碑)
 - 复审 v2 完整对照，补充更多合成项目样本的评测
 
 ## 指标口径
