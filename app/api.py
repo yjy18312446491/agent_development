@@ -10,13 +10,14 @@ from tempfile import TemporaryDirectory
 from typing import AsyncIterator, List, Optional
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import FormData, UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.requests import ClientDisconnect
 from starlette.responses import FileResponse
 
+from app.advisory import DemoAdvisor, advisory_router
 from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, PROMPT_VERSION_V2
 from app.project_scorer import make_injected_scorer
 from app.score import ProjectScorer, ProviderStoppedError
@@ -33,7 +34,7 @@ INVALID_UPLOAD = "上传文件不符合要求"
 # Match the evaluator's terminal HTTP statuses within the app-only runtime image.
 STOP_STATUSES = (400, 401, 402, 403, 404)
 
-app = FastAPI(title="简历筛选")
+router = APIRouter()
 
 
 def _db_path() -> Path:
@@ -140,17 +141,17 @@ def _screen_and_save(uploads: List[UploadFile], project_scorer: Optional[str] = 
     return {"batch_id": batch_id, "items": items}
 
 
-@app.get("/health")
+@router.get("/health")
 def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/", response_class=FileResponse, include_in_schema=False)
+@router.get("/", response_class=FileResponse, include_in_schema=False)
 def demo() -> FileResponse:
     return FileResponse(Path(__file__).with_name("static") / "demo.html", media_type="text/html")
 
 
-@app.post(
+@router.post(
     "/batches",
     openapi_extra={"requestBody": {"required": True, "content": {"multipart/form-data": {
         "schema": {"type": "object", "required": ["files"], "properties": {
@@ -177,7 +178,7 @@ async def create_batch(request: Request, project_scorer: Optional[str] = None) -
         await form.close()
 
 
-@app.get("/batches/{batch_id}")
+@router.get("/batches/{batch_id}")
 def get_batch(batch_id: str) -> dict:
     db_path = _db_path()
     if not db_path.is_file():
@@ -190,3 +191,14 @@ def get_batch(batch_id: str) -> dict:
     if not items:
         raise HTTPException(404, "批次不存在")
     return {"batch_id": batch_id, "items": items}
+
+
+def create_app(advisory_service: Optional[DemoAdvisor] = None) -> FastAPI:
+    application = FastAPI(title="简历筛选")
+    application.include_router(router)
+    application.include_router(advisory_router(advisory_service))
+    return application
+
+
+# Default and Docker entry points always start without an advisory service.
+app = create_app()
