@@ -1,0 +1,10 @@
+{
+  "record_version": 1,
+  "dataset_id": "retrieval-relevance-v1",
+  "dataset_sha256": "704ff394272ce4b9b3b4cf25b59440d82ea44ffec3d738d965a918377cdfc04b",
+  "reviewed_head": "1fd133b1f1f64cc01239baf02c6f962b52c12e01",
+  "reviewer": "Cursor",
+  "decision": "APPROVED",
+  "review_comment_url": "https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056976801",
+  "superseded_comment_url": "https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056814497"
+}

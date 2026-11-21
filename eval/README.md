@@ -247,7 +247,7 @@ live 预检还检查报告路径与写入能力，在任何 HTTP 前独占创建
 
 ## 独立相关性标注与假向量离线评测
 
-`data/synthetic/retrieval/relevance_v1.json` 新增 12 条中文合成查询与 36 条逐岗位相关性标签和理由，状态为 `draft_pending_cursor_review`。它们由岗位要求起草，尚未独立复审，不使用既有路由或项目分作检索金标，也未向模型请求这些新查询的向量。
+`data/synthetic/retrieval/relevance_v1.json` 提供 12 条中文合成查询与 36 条逐岗位相关性标签和理由。原始编写状态 `draft_pending_cursor_review` 随冻结 JSON 保留不变；PR #33 已获 [Cursor 更正补审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056976801)，当前审核信息由独立的 `relevance_v1.review.json` 关联原数据 SHA、head 和更正评论。报告新增 `annotation_review_status` 及证据引用，不改原标签。仍不使用路由或项目分作检索金标，也未为这些查询请求真实向量。
 
 ```powershell
 .\.venv\Scripts\python.exe -m eval.run_retrieval_eval

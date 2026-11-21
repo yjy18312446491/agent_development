@@ -2,7 +2,7 @@
 
 import argparse
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
@@ -17,9 +17,11 @@ from app.route import JobPosting, load_jobs
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET = ROOT / "data/synthetic/retrieval/relevance_v1.json"
+REVIEW_RECORD = ROOT / "data/synthetic/retrieval/relevance_v1.review.json"
 JOBS = ROOT / "data/synthetic/jobs/jobs.json"
 REPORT_DIR = ROOT / "eval/reports"
 DATASET_SHA = "704ff394272ce4b9b3b4cf25b59440d82ea44ffec3d738d965a918377cdfc04b"
+REVIEW_RECORD_SHA = "9adc330ac2bfb43ecb27e887738be46b048c998e9a278e9a2965eb7ea5ebc825"
 JOB_IDS = ("JD1", "JD2", "JD3")
 JOB_TEXT_SHAS = (
     "416e53ca42f9f4b9c703c4d9b9946923aa5822e70583d271e3ba74d386c06c94",
@@ -44,12 +46,29 @@ class RelevanceCase:
 
 
 @dataclass(frozen=True)
+class AnnotationReview:
+    reviewed_head: str
+    comment_url: str
+    superseded_comment_url: str
+    canonical_sha256: str
+
+
+@dataclass(frozen=True)
 class RelevanceDataset:
     jobs: Tuple[JobPosting, ...]
     cases: Tuple[RelevanceCase, ...]
     canonical_sha256: str
     file_sha256: str
     jobs_sha256: str
+    review: AnnotationReview
+    input_fingerprint: str
+
+
+def _input_fingerprint(jobs, cases, review) -> str:
+    content = {"jobs": [asdict(job) for job in jobs], "cases": [asdict(case) for case in cases],
+               "review": asdict(review)}
+    return sha256(json.dumps(content, ensure_ascii=False, sort_keys=True,
+                            separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
 def _text_sha(text: str) -> str:
@@ -121,8 +140,9 @@ def _parse_cases(raw: dict) -> Tuple[RelevanceCase, ...]:
     return tuple(cases)
 
 
-def load_dataset(path: Path = DATASET, jobs_file: Path = JOBS) -> RelevanceDataset:
-    """Accept only the reviewed-candidate snapshot; never load provider settings."""
+def load_dataset(path: Path = DATASET, jobs_file: Path = JOBS,
+                 review_file: Path = REVIEW_RECORD) -> RelevanceDataset:
+    """Verify the unchanged draft snapshot and its frozen independent review receipt."""
     try:
         contents = path.read_bytes()
         raw = json.loads(contents.decode("utf-8"), object_pairs_hook=_unique_object, parse_constant=_invalid_constant)
@@ -142,7 +162,16 @@ def load_dataset(path: Path = DATASET, jobs_file: Path = JOBS) -> RelevanceDatas
             raise ValueError()
         if any(c.query == j.raw_text.strip() for c in cases for j in jobs):
             raise ValueError()
-        return RelevanceDataset(jobs, cases, digest, sha256(contents).hexdigest(), job_sha)
+        receipt = json.loads(review_file.read_bytes().decode("utf-8"), object_pairs_hook=_unique_object,
+                             parse_constant=_invalid_constant)
+        receipt_sha = sha256(json.dumps(receipt, ensure_ascii=False, sort_keys=True,
+                                        separators=(",", ":")).encode("utf-8")).hexdigest()
+        if receipt_sha != REVIEW_RECORD_SHA or receipt["dataset_sha256"] != digest:
+            raise ValueError()
+        review = AnnotationReview(receipt["reviewed_head"], receipt["review_comment_url"],
+                                  receipt["superseded_comment_url"], receipt_sha)
+        return RelevanceDataset(jobs, cases, digest, sha256(contents).hexdigest(), job_sha, review,
+                                _input_fingerprint(jobs, cases, review))
     except (OSError, ValueError, TypeError, KeyError, AttributeError, UnicodeError):
         raise ValueError("RETRIEVAL_DATASET_INVALID") from None
 
@@ -190,6 +219,9 @@ def evaluate(dataset: RelevanceDataset, *, enabled: bool = False) -> dict:
     """Only an opt-in fixed fake provider exists here; no real transport hook."""
     if type(enabled) is not bool:
         raise ValueError("RETRIEVAL_EVAL_FLAG")
+    if (dataset.canonical_sha256 != DATASET_SHA or dataset.review.canonical_sha256 != REVIEW_RECORD_SHA
+            or _input_fingerprint(dataset.jobs, dataset.cases, dataset.review) != dataset.input_fingerprint):
+        raise ValueError("RETRIEVAL_SNAPSHOT_CHANGED")
     fake = FakeVectors(dataset) if enabled else None
     rows = []
     relevant_count = failed_count = 0
@@ -219,6 +251,13 @@ def evaluate(dataset: RelevanceDataset, *, enabled: bool = False) -> dict:
         "mode": "fixed-fake-vectors" if enabled else "disabled-preview",
         "provider": "fixed-3d-controls" if enabled else None, "quality_conclusion": "NOT_ESTABLISHED",
         "annotation_status": ANNOTATION_STATUS, "dataset_id": "retrieval-relevance-v1",
+        "annotation_review_status": "APPROVED",
+        "evaluation_input_sha256": dataset.input_fingerprint,
+        "annotation_review": {"reviewed_dataset_sha256": dataset.canonical_sha256,
+                              "reviewed_head": dataset.review.reviewed_head,
+                              "comment_url": dataset.review.comment_url,
+                              "superseded_comment_url": dataset.review.superseded_comment_url,
+                              "record_sha256": dataset.review.canonical_sha256},
         "dataset_sha256": dataset.canonical_sha256, "dataset_file_sha256": dataset.file_sha256,
         "jobs_sha256": dataset.jobs_sha256, "relevance_threshold": RELEVANCE_THRESHOLD,
         "documents": [{"reference_jd_id": j.jd_id, "text_sha256": _text_sha(j.raw_text.strip())}
