@@ -47,7 +47,7 @@
 - `eval.run_retrieval_baseline` 已获 [#35 最终补审通过](https://github.com/yjy18312446491/agent_development/pull/35#issuecomment-7058206435)，在 #34 merge commit `cac1216` 合入后，经用户授权转向 main 并 Squash 为 `f870f48`，树与已审/已测 `b1ba9e7` 相同；历史入口验收为全量 588 项、专项 56 项、Mock 13/13。2026-11-21 用户另行授权 15 向量/最多 3 HTTP/零重试/¥0.10；在 `9bc16b6` 实际运行一轮 SUCCESS：3 HTTP、0 重试、624 token，估算 ¥0.000312（账单未核验），预留 ¥0.06144。Recall@1=8/9、Recall@3=9/9（分母仅 9 条有相关岗位查询，另 3 条无相关查询为 null），RV005 错排。结果已获 [Cursor 归档复审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/36#issuecomment-7058528222)，经用户授权 Ready + Squash 合入 #36 `ea6e9c6`，树与已审 head 相同；不代表质量通过；新旧锁和原报告保留，默认 Mock、检索关闭，jd_id/评分/标签不变，不追加请求。[实测及边界](RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
 
 - Windows 宿主机 Docker Desktop 复验（可选，不阻塞检索质量主线）
-- 辅助证据 API/Demo 已形成[待审契约](RETRIEVAL_API.md)：仅本机、默认关闭、固定合成样例与假向量，参考证据独立展示，不接受客户端向量/路径/模型参数，不改批次记录或评分。本阶段仅方案，尚未实现接口、启动服务或改变 Docker；产品接线需用户与 Cursor 审核具体范围后另行执行。
+- 辅助证据 API/Demo [契约](RETRIEVAL_API.md) 已获 Cursor 对 #38 的方案 APPROVED，用户授权 Ready + Squash 合入 `bd1795f`，并允许独立分支实施默认关闭、本机四样例的假向量 API 与独立 Demo。合并树与审查 head 相同，main 已同步；此处仅记录方案，接口代码仍待实施及审查，未启动服务或改动 Docker、批次记录、jd_id 与评分。
 - 默认关闭的 `vector_index` 已获 [Cursor 对 #37 的 APPROVED](https://github.com/yjy18312446491/agent_development/pull/37#issuecomment-7058812760)。按用户明确授权，在不改审查 head `aaa8508` 的前提下全量 663 项、Mock 13/13 通过，再 Ready + Squash 合入 `71b09ec`；唯一父提交 `6cf0993`，树与已审/已测 head 相同，本机 main 已同步。索引有模型/维数/revision、岗位/内容快照校验与不覆盖的原子发布；仅假向量验证，真实向量来源、API/Demo 接线及目标容器验收未做。不改 jd_id、评分或真实锁，后续接线先审具体方案。[范围与边界](VECTOR_INDEX.md)
 - 按可演示完整交付仍有 3 个收尾里程碑：① 本轮质量复审和独立样本验证；② 可重用本地向量索引及默认关闭的辅助证据接线；③ 最终版本的干净安装/集成/容器/Demo 验收与发布材料。当前独立基线只给小样本描述性结果，不改变规则路由；新增真实实验另行审范围与预算，不重跑已结束轮次。[剩余完成标准](RETRIEVAL_EVAL.md#距离可演示完整交付的剩余里程碑)
 - 复审 v2 完整对照，补充更多合成项目样本的评测
