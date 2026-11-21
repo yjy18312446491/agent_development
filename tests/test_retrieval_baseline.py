@@ -313,6 +313,19 @@ def test_unknown_source_refuses_before_lock_or_http(setup, monkeypatch):
     assert not directory.exists()
 
 
+def test_invalid_source_is_rejected_before_any_credential_read(setup, monkeypatch):
+    http, directory, _ = setup()
+
+    def invalid_source():
+        raise ValueError("BASELINE_SOURCE_INVALID")
+
+    monkeypatch.setattr(runner, "_source_commit", invalid_source)
+    monkeypatch.setattr(runner.EmbeddingConfig, "from_env_file",
+                        lambda *args: pytest.fail("Credentials must follow successful source preflight"))
+    assert runner.main(["--live"]) != 0
+    assert http.calls == [] and not directory.exists()
+
+
 def test_source_evidence_requires_committed_runner_and_clean_relevant_inputs(monkeypatch):
     commands = []
 

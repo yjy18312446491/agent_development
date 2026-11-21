@@ -223,10 +223,11 @@ def main(argv=None):
             # Refuse before reading credentials when this round already has a lock.
             if (REPORT_DIR / LOCK_NAME).exists():
                 raise FileExistsError()
+            source_commit = _source_commit()
             config = EmbeddingConfig.from_env_file(ENV_FILE)
             report.update(mode="live-baseline", status="ARMED", counts_final=False,
                           run_id=uuid4().hex, started_at=datetime.now(timezone.utc).isoformat(),
-                          source_commit=_source_commit(), total_tokens=None, estimated_cny=None,
+                          source_commit=source_commit, total_tokens=None, estimated_cny=None,
                           metrics_status="NOT_STARTED")
         REPORT_DIR.mkdir(parents=True, exist_ok=True)
         _save(report, path, initial=True)
