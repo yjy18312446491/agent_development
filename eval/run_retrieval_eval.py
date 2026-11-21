@@ -268,7 +268,7 @@ def evaluate(dataset: RelevanceDataset, *, enabled: bool = False) -> dict:
         "failure_policy": "failed_relevant_queries_count_as_zero_in_macro_recall",
         "metrics": metrics, "cases": rows, "fake_embedder_calls": fake.calls if fake else 0,
         "http_attempts": 0, "real_http_requests": 0,
-        "limitations": ["Draft labels await independent review; fake metrics are not model quality.",
+        "limitations": ["Labels have an independent review receipt; fake metrics are not model quality.",
                         "Recall uses grade >= 2 and excludes no-relevant queries from its denominator.",
                         "Recall@3 is saturated with three jobs; it is not a useful quality gate.",
                         "No match threshold, routing, scoring, persistent vectors or live path is added."],
