@@ -100,3 +100,7 @@ live 报告使用独立 `embedding-live-*.json` 文件，不覆盖 preview 或�
 执行源码 `514d336`，北京 `text-embedding-v4` / 1024 维，3 document + 7 query 共 10 个向量，`short_gate` 本地跳过。状态 SUCCESS，2 次 HTTP、0 重试，用量 1140 token（78 + 1062），按 usage 估算 ¥0.00057；预留 ¥0.04096、授权预算 ¥0.10，最终账单未核验。报告和请求锁仍留在本机，run_id 一致，本轮不自动清锁或重跑。完整数字与排序观察见 [实测记录](../eval/README.md#2026-11-20-真实-embedding-冒烟)。
 
 多数查询排序为 JD1 > JD2 > JD3；`unmatched` 的相似度更低但仍返回排序，`unrelated_project` 也将 JD1 排第一。因此只确认传输与缓存排序链路可用，不计算 Recall/准确率，不改规则 jd_id、金标或评分。检索默认关闭，未接入 screen_one / FastAPI / Demo；当前缓存仅在进程内，报告不含向量，不能用于恢复向量后重算。独立相关性标注、质量评测和新的真实预算实验均待后续审核。
+
+## 独立标注与离线评测准备
+
+新增独立的 12 查询 / 36 标签初稿，待 Cursor 审查；`eval.run_retrieval_eval` 默认关闭，只有 `--fake` 使用固定人工向量，不读取 Key、不提供真实传输入口。标签与向量生成分离，指标只用于计算回归，无相关岗位与失败样本分别记录。原检索接口、规则路由及评分均未改，语义效果仍未验证。[数据、指标和验收边界](RETRIEVAL_EVAL.md)
