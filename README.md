@@ -21,6 +21,7 @@
 - 已按授权完成独立相关性标签上的真实 15 向量基线：3 次 HTTP、零重试，9 条有相关岗位查询的 Recall@1=8/9，另 3 条无相关查询不计入分母；结果已获 Cursor 归档复审通过，尚未接入筛选，不改变 jd_id 或评分。[实测、局限与剩余 3 个里程碑](docs/RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 - 本地岗位向量索引已通过 PR #37 合入 main `71b09ec`，默认关闭，显式保存/加载并校验模型版本与岗位快照；全量 663 项、Mock 13/13 通过，未接入筛选或 HTTP，既有 jd_id 和评分不变。[索引说明](docs/VECTOR_INDEX.md)
+- 独立功能分支已实现默认关闭的假向量辅助 API 与“合成样例证据演示”面板，普通 FastAPI/Docker 入口保持关闭；只查询四个服务端固定样例，不处理用户上传内容，也不改变筛选评分。专项 Python 191 项、模拟 DOM 脚本 6 项通过，待代码审核及整体验收。[本机启动方式与边界](docs/RETRIEVAL_API.md)
 
 ## 目标架构
 
@@ -104,7 +105,7 @@ with closing(connect(output / "screen-results.sqlite")) as conn:
 
 ## 辅助检索（默认关闭）
 
-`retrieve_job_evidence` 是独立的辅助接口，显式开启并注入 embedder 后，按余弦相似度排序岗位原文证据。它返回参考岗位 ID，不参与 `screen_one`、LangGraph、FastAPI、Demo 或 Docker 的路由与评分。
+`retrieve_job_evidence` 是独立的辅助接口，显式开启并注入 embedder 后，按余弦相似度排序岗位原文证据。它返回参考岗位 ID，不参与 `screen_one`、LangGraph、批次 API 或 Docker 的路由与评分。独立假向量 HTTP/页面演示使用本地索引，默认关闭，见[接口与运行说明](docs/RETRIEVAL_API.md)。
 
 下面的假向量只演示接口，不能用于评价语义检索效果。无需新增依赖或密钥。
 
@@ -125,7 +126,7 @@ print([(hit.reference_jd_id, hit.similarity) for hit in advice.hits])
 # 假向量全部相同，并列按 ID 排序：[("JD1", 1.0), ("JD2", 1.0)]
 ```
 
-缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。独立 Embedding 客户端已完成受控真实传输冒烟，尚未接入筛选；持久化向量索引与基于独立相关性标注的检索效果评测留待后续。[接口与测试边界](docs/RETRIEVAL.md)
+缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。独立 Embedding 客户端已完成受控真实传输冒烟与小样本相关性基线，尚未接入筛选；本地索引与 HTTP 演示仅使用假向量，真实向量持久化及扩大质量验证仍待后续。[接口与测试边界](docs/RETRIEVAL.md)
 
 ## 运行本地 FastAPI
 

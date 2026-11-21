@@ -1,6 +1,24 @@
-# 辅助岗位证据 API / Demo 契约草案
+# 辅助岗位证据 API / Demo
 
-状态：Cursor 已对 #38 `b629dfc` 方案 APPROVED（评论 7059210783），用户明确授权 Ready + Squash 合入 `bd1795f`，并允许独立分支实施本机假向量 API/Demo。本机 main 已同步；接口尚待该实施分支完成与代码审核。设计通过不表示接口已实现或真实语义质量通过。
+状态：Cursor 已对 #38 `b629dfc` 方案 APPROVED（评论 7059210783），用户明确授权 Ready + Squash 合入 `bd1795f`，合入记录 `3332550` 已推送 main。独立分支 `feat/offline-advisory-api` 已实施下述本机假向量接口与面板，专项离线验证通过，待代码审核。设计通过及假向量测试不表示真实语义质量通过。
+
+## 运行方式
+
+普通入口 `uvicorn app.api:app --host 127.0.0.1 --port 8000` 仍默认禁用辅助服务。显式启动假向量演示：
+
+```powershell
+.\.venv\Scripts\python.exe -m app.advisory_demo
+```
+
+启动器仅绑定 `127.0.0.1:8000`；在浏览器打开同源 `/`，使用单独的“合成样例证据演示”面板。它在启动阶段加载合成 jobs.json，并以固定 document 向量构建内容寻址索引；重复启动校验同一代，不覆盖已有文件。索引损坏则启动失败，不自动修复。运行目录仍为忽略的 `out/vector-index/`，无新增依赖、模型配置或外部请求。该启动命令为使用说明，本轮测试只模拟 uvicorn 绑定，未实际启动浏览器服务。
+
+默认 status 为 `{"enabled":false,"mode":"disabled"}`。显式启用后可通过同源 API 查询：
+
+```json
+{"case_id":"demo_frontend","top_k":3}
+```
+
+提交到 `POST /advisory/evidence`，Content-Type 为 `application/json`。四个 case_id 见下文；不接受 URL 查询参数。没有用户提供的文本、上传文件或模型参数。
 
 ## 范围与输入
 
@@ -16,7 +34,7 @@
 
 启用前的显式离线准备步骤使用合成岗位、固定 document 向量及 `IndexProfile("fake-controls", 3, "advisory-demo-v1")` 发布索引；只在 `out/vector-index/` 存储，重复代走既有载入校验，不覆盖。请求处理只加载/查询指定代，不创建、更新或删除索引。当前模型/revision/岗位失效时返回不可用，不自动生成新向量。旧真实报告没有原始向量，不从相似度反推或伪造真实索引。
 
-## HTTP 契约（拟定）
+## HTTP 契约
 
 GET /advisory/status：
 - 未启用返回 200、enabled=false、mode=disabled；不访问文件或模型。
@@ -37,19 +55,29 @@ POST /advisory/evidence：
 
 该区域与现有上传/批次回查/评分表分开，不能把固定样例结果显示成本次上传 PDF 的语义结果。所有服务端文本使用 textContent 等安全文本节点，不把岗位标题或证据拼接到 HTML。页面不展示路径、向量坐标、Key 或内部配置。
 
-## 实施后的验证方案（尚未执行）
+## 验证结果与后续验收
 
-常规开发测试全部使用临时假索引/固定向量：
+本次常规开发测试全部使用临时假索引/固定向量，未启动真实 HTTP 服务或浏览器：
 1. 默认 status/health/Demo 不读索引、配置、锁、真实报告或网络；未启用 evidence 不读文件。
 2. 4 KiB 限制、JSON/UTF-8/重复键/未知字段/白名单/top_k 边界；输出脱敏及文本渲染。
 3. 索引/profile/岗位变更、损坏与读失败都空证据，不回退向量提供器；查询不落盘、不变更索引。
 4. 即使参考 JD3 排第一，既有 S001 仍 JD1/60、UNMATCHED 仍 0，默认及显式项目评分路径不变。
 5. 四份已冻结的真实锁/报告 SHA 前后不变；任意模型客户端构造、配置读取或网络触发即失败。
 
-实现完成后推独立 Draft PR 进行代码审查；最终 head 的全项目 pytest、Mock 回归、干净安装、图/API 集成及目标容器验收，须按重要测试边界先经用户与 Cursor 审核/授权。不能把索引核心的 663 项历史验收当成新接口验收。
+实际命令与结果：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_advisory_api.py tests/test_api.py tests/test_demo.py tests/test_vector_index.py -q
+node --test tests/js/test_advisory_demo.cjs
+.\.venv\Scripts\python.exe -m compileall -q app/advisory.py app/advisory_demo.py app/api.py tests/test_advisory_api.py
+```
+
+Python **191 passed**，其中新增接口/启动器 **68 项**，其余为既有 API/Demo/索引相关回归；5 条既有 SWIG 弃用警告。Node **6 passed**，使用内置 vm 与模拟 DOM 执行页面实际脚本，验证默认禁用、显式查询、文本安全、错误/重复点击与批次 UI 隔离；它不是浏览器兼容性或视觉验收。compileall 和 git diff --check 通过。四份真实锁/报告 SHA 前后不变。
+
+独立 Draft PR 待代码审查；最终 head 的全项目 pytest、Mock CLI 回归、干净安装、图/API 整体集成及目标容器/真实浏览器验收尚未执行，须按重要测试边界先经用户与 Cursor 审核/授权。不能把索引核心的 663 项历史验收当成新接口验收。
 
 ## 审核与停止条件
 
-本契约的固定演示范围已获方案审核与用户实施授权；实施在独立功能分支进行，API+Demo 同一完整子功能完成后统一送审代码。本次方案合入只改文档，未启动服务、不改 Docker、不发送真实请求；实施后的全项目与容器等重要验收仍按上述审核/授权边界执行。
+本契约的固定演示范围已获方案审核与用户实施授权；实施在独立功能分支进行，API+Demo 同一完整子功能统一送审代码。#38 方案合入只改文档，本分支新增接口和页面；未改 Docker、不发送真实请求。推送 Draft PR 后停止该分支修改，代码审核及全项目与容器等重要验收仍按上述边界执行。
 
 后续真实向量持久化或自由文本/PDF 查询必须另提输入、来源、模型/维数/版本、停止逻辑、预算和隐私方案，取得适用授权后再做；不利用已结束轮次的余额或请求次数。

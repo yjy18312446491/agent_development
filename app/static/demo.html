@@ -30,8 +30,8 @@
       background: #fff;
     }
     label { display: block; margin-bottom: .5rem; font-weight: 600; }
-    input, button { font: inherit; }
-    input {
+    input, select, button { font: inherit; }
+    input, select {
       width: 100%;
       min-height: 2.75rem;
       padding: .5rem;
@@ -61,6 +61,11 @@
     th, td { padding: .8rem; border-bottom: 1px solid #e0e9e7; white-space: nowrap; }
     thead { background: #eaf2ef; }
     tbody tr:last-child td { border-bottom: 0; }
+    #advisory { margin-top: 2rem; }
+    #advisory-form { padding: 0; border: 0; margin-top: 1rem; }
+    #advisory-text, #advisory-hits p { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #advisory-hits { padding-left: 1.5rem; }
+    #advisory-hits li { padding: .75rem 0; border-bottom: 1px solid #e0e9e7; }
   </style>
 </head>
 <body>
@@ -106,6 +111,20 @@
           <tbody id="rows"></tbody>
         </table>
       </div>
+    </section>
+
+    <section id="advisory" class="results" aria-labelledby="advisory-title">
+      <h2 id="advisory-title">合成样例证据演示</h2>
+      <p><strong>固定向量演示</strong> · 仅演示参考岗位的排序与原文证据，语义质量尚未验证。</p>
+      <p>此区域使用独立合成样例，与上方上传的 PDF 和批次评分无关。相似度不决定岗位、分数或录用；无关样例也可能返回参考岗位。</p>
+      <form id="advisory-form">
+        <label for="advisory-case">选择合成样例</label>
+        <select id="advisory-case" disabled aria-describedby="advisory-text"></select>
+        <p id="advisory-text"></p>
+        <button id="advisory-query" type="button" disabled>查询参考证据</button>
+      </form>
+      <p id="advisory-notice" role="status">正在检查辅助演示状态…</p>
+      <ol id="advisory-hits" aria-label="参考岗位证据"></ol>
     </section>
   </main>
 
@@ -177,6 +196,93 @@
       }
       requestBatch(`/batches/${encodeURIComponent(id)}`, {}, "正在查询…");
     });
+  </script>
+  <script>
+    // This panel never calls requestBatch/renderRows or uses uploaded files.
+    const advisoryCase = document.querySelector("#advisory-case");
+    const advisoryQuery = document.querySelector("#advisory-query");
+    const advisoryText = document.querySelector("#advisory-text");
+    const advisoryNotice = document.querySelector("#advisory-notice");
+    const advisoryHits = document.querySelector("#advisory-hits");
+    let advisoryCases = [];
+    let advisoryEnabled = false;
+
+    function showAdvisoryCase() {
+      const item = advisoryCases.find(item => item.case_id === advisoryCase.value);
+      advisoryText.textContent = item ? item.text : "";
+      advisoryHits.replaceChildren();
+    }
+
+    async function loadAdvisoryStatus() {
+      try {
+        const response = await fetch("/advisory/status");
+        const data = await response.json();
+        if (!response.ok || data.enabled !== true || data.mode !== "fixed-fake-vectors"
+            || !Array.isArray(data.cases) || data.cases.length !== 4) {
+          advisoryNotice.textContent = "辅助演示未启用，批次筛选仍可使用。";
+          return;
+        }
+        advisoryCases = data.cases;
+        const options = document.createDocumentFragment();
+        for (const item of advisoryCases) {
+          const option = document.createElement("option");
+          option.value = item.case_id;
+          option.textContent = item.title;
+          options.append(option);
+        }
+        advisoryCase.replaceChildren(options);
+        advisoryEnabled = true;
+        advisoryCase.disabled = advisoryQuery.disabled = false;
+        showAdvisoryCase();
+        advisoryNotice.textContent = "固定向量演示已就绪，请选择合成样例。";
+      } catch {
+        advisoryNotice.textContent = "辅助演示不可用，批次筛选仍可使用。";
+      }
+    }
+
+    async function queryAdvisory() {
+      if (!advisoryEnabled || advisoryQuery.disabled) return;
+      advisoryCase.disabled = advisoryQuery.disabled = true;
+      advisoryHits.replaceChildren();
+      advisoryNotice.textContent = "正在读取本地参考证据…";
+      try {
+        const response = await fetch("/advisory/evidence", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ case_id: advisoryCase.value, top_k: 3 })
+        });
+        const data = await response.json();
+        if (!response.ok || data.advisory !== true || data.mode !== "fixed-fake-vectors"
+            || data.quality_conclusion !== "NOT_ESTABLISHED" || data.status !== "OK"
+            || !Array.isArray(data.hits)) {
+          advisoryNotice.textContent = "参考证据不可用，批次结果不受影响。";
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        for (const hit of data.hits) {
+          const item = document.createElement("li");
+          const title = document.createElement("strong");
+          title.textContent = `${hit.reference_jd_id} · ${hit.title}`;
+          const similarity = document.createElement("p");
+          similarity.textContent = `参考相似度：${Number(hit.similarity).toFixed(3)}`;
+          const excerpt = document.createElement("p");
+          excerpt.textContent = hit.evidence_excerpt;
+          item.append(title, similarity, excerpt);
+          fragment.append(item);
+        }
+        advisoryHits.replaceChildren(fragment);
+        advisoryNotice.textContent = "固定向量参考结果；岗位与评分仍以批次规则结果为准。";
+      } catch {
+        advisoryHits.replaceChildren();
+        advisoryNotice.textContent = "参考证据请求失败，批次结果不受影响。";
+      } finally {
+        advisoryCase.disabled = advisoryQuery.disabled = !advisoryEnabled;
+      }
+    }
+
+    advisoryCase.addEventListener("change", showAdvisoryCase);
+    document.querySelector("#advisory-form").addEventListener("submit", event => event.preventDefault());
+    advisoryQuery.addEventListener("click", queryAdvisory);
+    loadAdvisoryStatus();
   </script>
 </body>
 </html>
