@@ -244,3 +244,16 @@ live 预检还检查报告路径与写入能力，在任何 HTTP 前独占创建
 报告 `eval/reports/embedding-live-20261120-round01.json`、原锁和配置仅留本地，不提交 Git；报告不含 Key、配置 URL、原文或向量。数据清单、岗位、PDF 和抽取文本 SHA 已核对。进程内向量缓存未持久化，不能从报告恢复向量重算。截图曾包含明文 Key，建议用户自行在对应控制台重置，重置不构成再次调用授权。
 
 默认筛选与 Demo 仍为 Mock，辅助检索默认关闭且未接线。独立检索标注、质量评测及新预算实验待后续；本轮已结束，不删除锁，不沿用剩余一次尝试追加请求。
+
+## 独立相关性标注与假向量离线评测
+
+`data/synthetic/retrieval/relevance_v1.json` 新增 12 条中文合成查询与 36 条逐岗位相关性标签和理由，状态为 `draft_pending_cursor_review`。它们由岗位要求起草，尚未独立复审，不使用既有路由或项目分作检索金标，也未向模型请求这些新查询的向量。
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_retrieval_eval
+.\.venv\Scripts\python.exe -m eval.run_retrieval_eval --fake
+```
+
+默认校验后返回 DISABLED、零提供器调用；显式 `--fake` 只用固定 3 维控制向量做排序，报告 `quality_conclusion=NOT_ESTABLISHED`。没有 live 开关，不读凭证，不构造真实客户端。报告仅能独占创建 `eval/reports/retrieval-offline-*.json`，不覆盖原报告或锁。
+
+等级 2 计为相关，9 条相关查询构成宏 Recall@1/3 分母；3 条无相关查询的 Recall 为 null。失败相关查询按 0 计入宏平均，不能排除失败抬高分数。人工控制向量故意错排三条，得到 6/9 与 9/9 仅用于指标回归；三个岗位下 Recall@3 易饱和，不能据此认定语义质量。完整标注表、冻结 SHA、失败口径和测试见 [评测规范](../docs/RETRIEVAL_EVAL.md)。

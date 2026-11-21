@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "dataset_id": "retrieval-relevance-v1",
+  "annotation_status": "draft_pending_cursor_review",
+  "annotation_source": "Codex authored these synthetic queries and rationales from the existing job requirements before any model ranking; independent review is pending.",
+  "relevance_threshold": 2,
+  "rubric": {
+    "0": "无岗位职责或技能证据，不相关；无关查询允许三个岗位均为 0。",
+    "1": "有可迁移的部分技能，但核心技术、职责或经验条件存在明确缺口。",
+    "2": "原文提供与岗位核心技术、职责及经验条件相符的具体证据。"
+  },
+  "job_text_sha256": {
+    "JD1": "416e53ca42f9f4b9c703c4d9b9946923aa5822e70583d271e3ba74d386c06c94",
+    "JD2": "d980df845a13eaf5524f2f71da94160d6fbb8a3f2240794bba16ff3e0e1ca6ab",
+    "JD3": "3a5ae0174e8d15f3f7a3dd5dd2cc7129420298f95b8828be2591345eb93e343c"
+  },
+  "cases": [
+    {
+      "id": "RV001",
+      "coverage_group": "JD1",
+      "query": "四年后端开发，使用 Python 和 FastAPI 维护订单接口，以 MySQL 保存订单，使用 Redis 缓存库存。我负责接口限流和慢查询优化，并用 Docker 在 Linux 上部署服务。",
+      "relevance": {"JD1": 2, "JD2": 1, "JD3": 0},
+      "rationale": {
+        "JD1": "四年经验及 Python、FastAPI、MySQL、Redis 的具体后端任务符合中级要求。",
+        "JD2": "Python、MySQL 可迁移，但未提供 Flask 证据且四年超过该岗位配置的初级年限范围。",
+        "JD3": "没有 JavaScript、TypeScript、Vue、React 或页面开发证据。"
+      }
+    },
+    {
+      "id": "RV002",
+      "coverage_group": "JD1",
+      "query": "三年半服务端经验，团队建设异步任务平台，技术为 Python、FastAPI、MySQL 和 Redis。本人负责失败任务重试接口、查询索引和缓存失效处理，持续维护上线服务。",
+      "relevance": {"JD1": 2, "JD2": 1, "JD3": 0},
+      "rationale": {
+        "JD1": "服务端任务及四项核心技术有明确证据，经验超过三年。",
+        "JD2": "有 Python、MySQL 基础，但缺少 Flask 且年限超出初级配置；团队表述不自动变成项目贡献评分。",
+        "JD3": "描述的是服务端任务，没有页面或前端技术证据。"
+      }
+    },
+    {
+      "id": "RV003",
+      "coverage_group": "JD1",
+      "query": "五年 Python 后端经验，为仓储系统实现 FastAPI 数据接口，设计 MySQL 库表并用 Redis 做热点数据缓存。我处理并发更新和服务监控，没有承担浏览器页面开发。",
+      "relevance": {"JD1": 2, "JD2": 1, "JD3": 0},
+      "rationale": {
+        "JD1": "年限与核心技术均有具体后端实践证据。",
+        "JD2": "共享 Python 和 MySQL，但没有 Flask 且五年经验不符合初级配置范围。",
+        "JD3": "原文明确没有页面开发，且无前端核心技术证据。"
+      }
+    },
+    {
+      "id": "RV004",
+      "coverage_group": "JD2",
+      "query": "应届生，没有全职开发年限。毕业项目使用 Python、Flask 和 MySQL，实现图书借阅的增删改查接口，使用 Git 提交代码。尚未使用 FastAPI 和 Redis，也没有页面框架经验。",
+      "relevance": {"JD1": 1, "JD2": 2, "JD3": 0},
+      "rationale": {
+        "JD1": "Python、MySQL 部分相关，但明确缺少 FastAPI、Redis 与三年经验。",
+        "JD2": "接受应届生和项目经验，Flask、Python、MySQL 及接口任务均有证据。",
+        "JD3": "没有页面框架或前端语言实践。"
+      }
+    },
+    {
+      "id": "RV005",
+      "coverage_group": "JD2",
+      "query": "一年半后端经验，参与小团队的报表服务，使用 Python、Flask 和 MySQL。本人负责查询接口和 SQL 分页，使用 Git 做协作；目前没有缓存组件和 FastAPI 的实际开发经验。",
+      "relevance": {"JD1": 1, "JD2": 2, "JD3": 0},
+      "rationale": {
+        "JD1": "存在部分后端技能，但核心框架、缓存与中级年限要求不满足。",
+        "JD2": "年限在初级配置范围内，核心技术与具体接口任务匹配。",
+        "JD3": "报表服务是后端接口，不构成 Vue、React 或页面开发证据。"
+      }
+    },
+    {
+      "id": "RV006",
+      "coverage_group": "JD2",
+      "query": "半年 Python 开发实习，工具清单包括 Flask、MySQL、Git 和 Docker。在带教下为内部通讯录实现 Flask 查询接口并添加 MySQL 条件过滤；没有独立维护大型后端或前端页面的经历。",
+      "relevance": {"JD1": 1, "JD2": 2, "JD3": 0},
+      "rationale": {
+        "JD1": "Python 和数据库技能可迁移，但缺少三年经验、FastAPI 与 Redis。",
+        "JD2": "除工具提及外还有 Flask 查询和 MySQL 过滤的具体任务，实习年限符合初级范围。",
+        "JD3": "原文无前端语言、框架及页面任务。"
+      }
+    },
+    {
+      "id": "RV007",
+      "coverage_group": "JD3",
+      "query": "两年前端开发经验，使用 JavaScript、TypeScript、Vue 和 React 实现表单、页面路由和组件交互。通过 Git 协作，与服务端接口联调；不负责 Python 服务端和数据库实现。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 2},
+      "rationale": {
+        "JD1": "接口联调不等于后端实现，没有 Python 或数据库实践。",
+        "JD2": "没有 Flask、Python、MySQL 的实现证据。",
+        "JD3": "两年经验、四项前端技术和具体页面职责均匹配。"
+      }
+    },
+    {
+      "id": "RV008",
+      "coverage_group": "JD3",
+      "query": "一年半页面开发经验，团队维护 Vue 和 React 的业务界面。我使用 JavaScript 与 TypeScript 编写复用组件，处理页面状态和交互测试，使用 Git；后端由另一组负责。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 2},
+      "rationale": {
+        "JD1": "职责明确为页面，没有中级后端的技术和经验依据。",
+        "JD2": "没有 Python、Flask、MySQL 的开发证据。",
+        "JD3": "经验超过一年，前端语言、框架和组件职责有明确证据。"
+      }
+    },
+    {
+      "id": "RV009",
+      "coverage_group": "JD3",
+      "query": "三年浏览器端工程经验，主要技术为 JavaScript、TypeScript、React、Vue。实现数据展示页面和键盘交互，修复组件渲染问题，并通过 Git 审查代码；没有服务端开发经历。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 2},
+      "rationale": {
+        "JD1": "没有后端服务、数据库或缓存实践，不能由代码审查推断后端能力。",
+        "JD2": "没有初级后端岗位要求的语言与框架实践。",
+        "JD3": "前端年限、技术与页面交互职责符合要求。"
+      }
+    },
+    {
+      "id": "RV010",
+      "coverage_group": "none",
+      "query": "负责线下读书会的报名登记和活动运营，用电子表格安排场地、统计参与人数，撰写活动总结。没有软件开发、编程语言或网站页面制作经验。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0},
+      "rationale": {
+        "JD1": "活动运营和电子表格不提供后端工程证据。",
+        "JD2": "没有 Python、Flask、MySQL 或软件项目实践。",
+        "JD3": "没有前端技术和页面开发证据。"
+      }
+    },
+    {
+      "id": "RV011",
+      "coverage_group": "none",
+      "query": "工作内容是核对发票、登记收支和整理报销材料，使用办公软件生成财务表格。未从事接口、数据库程序或浏览器页面开发，也没有岗位要求的编程技术经历。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0},
+      "rationale": {
+        "JD1": "财务表格不能作为数据库程序或后端开发证据。",
+        "JD2": "没有初级后端岗位的技术或任务依据。",
+        "JD3": "没有前端岗位的技术或页面实践依据。"
+      }
+    },
+    {
+      "id": "RV012",
+      "coverage_group": "none",
+      "query": "对软件行业有兴趣，正在了解开发岗位，尚未学习具体编程语言或框架，也没有实现接口、网页或数据库项目的经历。希望先了解培训课程安排。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0},
+      "rationale": {
+        "JD1": "兴趣与培训意向不提供中级后端的实际技能或年限证据。",
+        "JD2": "接受应届生不代表无任何技能证据也算相关，没有 Python、Flask、MySQL 实践。",
+        "JD3": "没有前端语言、框架和页面开发证据。"
+      }
+    }
+  ]
+}
