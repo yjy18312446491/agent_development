@@ -64,6 +64,56 @@ def test_twelve_independent_cases_have_thirty_six_explained_draft_grades():
     assert all(c.case_id.startswith("RV") for c in dataset.cases)
 
 
+def test_review_receipt_links_the_unchanged_candidate_to_corrected_independent_review():
+    dataset = runner.load_dataset()
+    report = runner.evaluate(dataset)
+    assert dataset.canonical_sha256 == "704ff394272ce4b9b3b4cf25b59440d82ea44ffec3d738d965a918377cdfc04b"
+    assert report["annotation_status"] == "draft_pending_cursor_review"  # Original immutable authoring metadata.
+    assert report["annotation_review_status"] == "APPROVED"
+    receipt = report["annotation_review"]
+    assert receipt["reviewed_dataset_sha256"] == dataset.canonical_sha256
+    assert receipt["record_sha256"] == runner.REVIEW_RECORD_SHA
+    assert receipt["reviewed_head"] == "1fd133b1f1f64cc01239baf02c6f962b52c12e01"
+    assert receipt["comment_url"].endswith("#issuecomment-7056976801")
+    assert receipt["superseded_comment_url"].endswith("#issuecomment-7056814497")
+    assert report["quality_conclusion"] == "NOT_ESTABLISHED" and report["real_http_requests"] == 0
+
+
+@pytest.mark.parametrize("change", [
+    lambda r: r.update(decision="REQUEST_CHANGES"),
+    lambda r: r.update(reviewed_head="0" * 40),
+    lambda r: r.update(dataset_sha256="0" * 64),
+    lambda r: r.update(review_comment_url=r["superseded_comment_url"]),
+    lambda r: r.update(reviewer="unknown"),
+    lambda r: r.update(record_version=True),
+    lambda r: r.pop("superseded_comment_url"),
+    lambda r: r.update(extra="unexpected"),
+])
+def test_altered_review_receipts_are_rejected(tmp_path, change):
+    receipt = json.loads(runner.REVIEW_RECORD.read_text(encoding="utf-8"))
+    change(receipt)
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(ValueError, match="DATASET_INVALID"):
+        runner.load_dataset(review_file=path)
+
+
+def test_missing_or_duplicate_key_review_receipt_is_not_silently_approved(tmp_path):
+    path = tmp_path / "review.json"
+    with pytest.raises(ValueError, match="DATASET_INVALID"):
+        runner.load_dataset(review_file=path)
+    path.write_text('{"decision":"APPROVED","decision":"APPROVED"}', encoding="utf-8")
+    with pytest.raises(ValueError, match="DATASET_INVALID"):
+        runner.load_dataset(review_file=path)
+
+
+def test_review_receipt_semantic_hash_accepts_only_equivalent_formatting(tmp_path):
+    receipt = json.loads(runner.REVIEW_RECORD.read_text(encoding="utf-8"))
+    path = tmp_path / "review.json"
+    path.write_bytes(json.dumps(receipt, indent=4).replace("\n", "\r\n").encode("utf-8"))
+    assert runner.load_dataset(review_file=path).review.canonical_sha256 == runner.REVIEW_RECORD_SHA
+
+
 @pytest.mark.parametrize("change", [
     lambda r: r.update(extra="unexpected"),
     lambda r: r.update(schema_version=True),
@@ -188,9 +238,27 @@ def test_fake_controls_include_wrong_rankings_and_correct_macro_denominators():
 def test_fake_rankings_do_not_read_relevance_labels():
     dataset = runner.load_dataset()
     changed = replace(dataset, cases=(replace(dataset.cases[0], grades=(0, 2, 0)),) + dataset.cases[1:])
-    before, after = runner.evaluate(dataset, enabled=True), runner.evaluate(changed, enabled=True)
-    assert [c["rankings"] for c in before["cases"]] == [c["rankings"] for c in after["cases"]]
-    assert before["metrics"]["recall_at_1"] != after["metrics"]["recall_at_1"]
+    before, after = runner.FakeVectors(dataset), runner.FakeVectors(changed)
+    for case in dataset.cases:
+        original = runner.retrieve_job_evidence(case.query, dataset.jobs, enabled=True, embedder=before)
+        relabelled = runner.retrieve_job_evidence(case.query, changed.jobs, enabled=True, embedder=after)
+        assert original.hits == relabelled.hits
+
+
+@pytest.mark.parametrize("field", ["grades", "query", "review", "job_skills"])
+def test_in_memory_changes_cannot_reuse_original_review_claim(monkeypatch, field):
+    dataset = runner.load_dataset()
+    if field == "grades":
+        dataset = replace(dataset, cases=(replace(dataset.cases[0], grades=(0, 2, 0)),) + dataset.cases[1:])
+    elif field == "query":
+        dataset = replace(dataset, cases=(replace(dataset.cases[0], query="changed text"),) + dataset.cases[1:])
+    elif field == "review":
+        dataset = replace(dataset, review=replace(dataset.review, comment_url="unverified review"))
+    else:
+        dataset.jobs[0].skills.append("unreviewed skill")
+    monkeypatch.setattr(runner, "FakeVectors", lambda *a: pytest.fail("Reject before provider construction"))
+    with pytest.raises(ValueError, match="SNAPSHOT_CHANGED"):
+        runner.evaluate(dataset, enabled=True)
 
 
 def test_cache_miss_fails_one_query_and_keeps_it_in_macro_denominator(monkeypatch):
