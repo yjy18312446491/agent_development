@@ -47,6 +47,7 @@
 - `eval.run_retrieval_baseline` 已获 [#35 最终补审通过](https://github.com/yjy18312446491/agent_development/pull/35#issuecomment-7058206435)，在 #34 merge commit `cac1216` 合入后，经用户授权转向 main 并 Squash 为 `f870f48`，树与已审/已测 `b1ba9e7` 相同；历史入口验收为全量 588 项、专项 56 项、Mock 13/13。2026-11-21 用户另行授权 15 向量/最多 3 HTTP/零重试/¥0.10；在 `9bc16b6` 实际运行一轮 SUCCESS：3 HTTP、0 重试、624 token，估算 ¥0.000312（账单未核验），预留 ¥0.06144。Recall@1=8/9、Recall@3=9/9（分母仅 9 条有相关岗位查询，另 3 条无相关查询为 null），RV005 错排。结果已获 [Cursor 归档复审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/36#issuecomment-7058528222)，经用户授权 Ready + Squash 合入 #36 `ea6e9c6`，树与已审 head 相同；不代表质量通过；新旧锁和原报告保留，默认 Mock、检索关闭，jd_id/评分/标签不变，不追加请求。[实测及边界](RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
 
 - Windows 宿主机 Docker Desktop 复验（可选，不阻塞检索质量主线）
+- 独立分支已实现默认关闭的 `vector_index`：固定模型/维数/revision 和完整岗位快照，JSON 索引独占原子发布、加载校验、旧代失效和本地余弦查询；缺失/损坏不回退发网。本轮新增 75 项索引单测，相关离线回归合计 193 passed；工作区固定假向量保存/加载/查询通过。代码待 Cursor 审核，真实向量持久化、API/Demo 接线及新 head 的全项目整体验收未做；不改 jd_id、评分或真实请求锁。[范围与边界](VECTOR_INDEX.md)
 - 按可演示完整交付仍有 3 个收尾里程碑：① 本轮质量复审和独立样本验证；② 可重用本地向量索引及默认关闭的辅助证据接线；③ 最终版本的干净安装/集成/容器/Demo 验收与发布材料。当前独立基线只给小样本描述性结果，不改变规则路由；新增真实实验另行审范围与预算，不重跑已结束轮次。[剩余完成标准](RETRIEVAL_EVAL.md#距离可演示完整交付的剩余里程碑)
 - 复审 v2 完整对照，补充更多合成项目样本的评测
 
