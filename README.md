@@ -16,7 +16,7 @@
 - 单份筛选已提供可序列化的结果记录，包含档位、分项和复核原因。
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
-- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数；辅助向量检索接口默认关闭，已用假向量验证，真实 Embedding 待验证。
+- FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数；辅助向量检索接口默认关闭。本机已用显式 `--live` 跑通 10 向量传输冒烟，默认筛选仍为 Mock，排序不是检索准确率。[实测与局限](eval/README.md#2026-11-20-真实-embedding-冒烟)
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 
@@ -123,7 +123,7 @@ print([(hit.reference_jd_id, hit.similarity) for hit in advice.hits])
 # 假向量全部相同，并列按 ID 排序：[("JD1", 1.0), ("JD2", 1.0)]
 ```
 
-缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。真实 Embedding 客户端、持久化向量库和检索效果评测留待后续。[接口与测试边界](docs/RETRIEVAL.md)
+缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。独立 Embedding 客户端已完成受控真实传输冒烟，尚未接入筛选；持久化向量索引与基于独立相关性标注的检索效果评测留待后续。[接口与测试边界](docs/RETRIEVAL.md)
 
 ## 运行本地 FastAPI
 
