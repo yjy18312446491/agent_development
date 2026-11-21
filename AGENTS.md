@@ -1,8 +1,107 @@
-# Codex repository entrypoint
+# Codex / Cursor 协作与 GitHub PR 契约
 
-Before changing this repository, read `Agent.md` as the canonical project rules file.
-Also read `README.md`, `docs/STATUS.md`, and `docs/DEVELOPMENT_WORKFLOW.md` when the task involves implementation, testing, Git, or GitHub.
+本文件适用于本仓库全部任务，自 2026-11-21 起执行。Codex 与 Cursor 开始工作前均须阅读；明确的用户指令优先于本文件。与其它仓库文档的协作流程表述冲突时，以本文件为准，不以历史交接稿覆盖当前要求。
 
-Keep application code under `app/`, tests under `tests/`, evaluation under `eval/`, synthetic data under `data/synthetic/`, and project documentation under `docs/`.
+## 1. 进入任务与项目约束
 
-Before editing, inspect the current branch and working tree. Before reporting completion, run the relevant tests and report changed files, dependencies, test evidence, Git commits, and GitHub status.
+- 先读 `Agent.md`，它是业务、评分、数据与隐私约束的依据；实现、测试或 Git/GitHub 任务还须读 `README.md`、`docs/STATUS.md`、`docs/DEVELOPMENT_WORKFLOW.md` 及相关代码。
+- 编辑前检查当前分支、工作区、目标 PR 的 base/head 和最新意见。保留他人改动，不自动清理、覆盖、暂存或提交不属于本任务的文件。
+- 应用放 `app/`，测试放 `tests/`，评测放 `eval/`，合成数据放 `data/synthetic/`，长期文档放 `docs/`；根目录保留入口文档与项目配置。
+- 项目默认筛选仍为 Mock，辅助检索默认关闭；没有明确任务授权，不改确定性 `jd_id`、五维评分、冻结样本、金标或 prompt，也不将检索接入筛选、FastAPI 或 Demo。
+- Mock、假 HTTP、真实传输冒烟和语义质量评测必须分别表述。通过数、失败数、成本和部署状态均须有证据；未知用量、费用不得伪称为零。
+- 真实模型/Embedding 调用须有适用的用户授权和明确预算，包含模型、样本/向量数、总 HTTP 尝试数与重试数。不得用新进程、新客户端、删除请求锁或重跑命令刷新配额。配置完成、审查通过或 PR 合入不自动授予新一轮付费调用权限。
+- Key、真实简历、个人信息、`.env`、运行数据库、日志、`eval/reports/` 和请求锁不得进入 Git、PR 或评论。输出只能包含脱敏结果，不打印真实 Key、完整私有配置地址或原始错误体。
+
+## 2. 角色分工与交接方式
+
+### Codex：执行与提交
+
+- 负责开发、修复、测试、分支、PR 和长期文档。按完整子功能或里程碑连续推进，完成实现及相应自测后统一送审，不因零碎修改反复中断求审。
+- **禁止在仓库中新建临时交接文件**，包括 `handoff.md`、`review_todo.md`、`CODEX_HANDOFF_*.md`、`CURSOR_HANDOFF_*.md`，即使不提交 Git 也不生成。说明、证据与问题清单统一进入 PR 正文和评论；用户明确另行要求交接文件时按该要求执行。
+- 已存在的历史交接文件不主动删除、搬运或纳入提交；新的流程记录不继续向其中追加。`AGENTS.md`、架构、评测、状态、版本和踩坑文档属于长期文档，不是临时交接稿。
+- 推送并创建/更新 Draft PR 后，停止该分支的修改，等待审查意见。可只读查看状态、回复问题；用户明确下达新任务时单独开分支或隔离工作区，不把新任务混入待审 PR。
+- 收到 `REQUEST_CHANGES` 后，在同一分支修复、补测、推送到同一 PR，并逐项回复对应意见；完成本轮更新后再次等待审查。
+
+### Cursor：只读审查与风险核验
+
+- 检查需求符合性、边界输入、空值/格式、并发/超时、异常停止、预算/请求上限、隐私、回归风险及测试覆盖。
+- **审查期间不得修改代码或配置，也不生成交接文件。** 如用户另行指定 Cursor 为执行端，应先明确角色变化，不同时充当同一轮修改者和独立审核者。
+- 核对分支与目标 base，记录审查 head SHA；运行测试仅允许必要的本机、可再生输出，不清锁、不读取或打印真实 Key、不额外试连付费服务。
+- 所有阻塞项、建议、重测要求与结论直接发布到对应 Draft PR 评论区；不复述背景或写客套话。按优先级列出文件、行号、触发条件、影响和修复建议。
+- 结论明确为 `REQUEST_CHANGES` 或 `APPROVED`。`APPROVED` 表示本轮未发现阻塞问题，须说明已测项与未测限制；不能把评论文本冒充 GitHub 正式 Review 审批状态。
+- 审查前后比较 `git status` 与 diff，确认未引入受版本管理的修改；已有不明改动应报告，不擅自恢复工作区。
+
+## 3. 分支与 PR 双模式
+
+同一分支同时只对应一个活跃 PR。开始任务时选择一种模式，目标分支必须明确。
+
+### 模式 A：中小型独立功能或修复
+
+适用于通常 1～3 天内、改动相对集中的任务。
+
+1. 检查工作区，获取并核对最新 `main`，创建 `feat/`、`fix/`、`test/` 或 `docs/` 分支。
+2. Codex 完成子功能与自测，推送分支，创建以 `main` 为 base 的 Draft PR，写明验收标准、改动、命令、实测结果与限制。
+3. Cursor 对该 PR 的实际 base/head 只读审查，在 PR 留言。Codex 在同一分支修复并更新原 PR，不为每轮修复重复开 PR。
+4. 审查往返以 2～3 轮为上限；超过 3 轮仍未收敛，停止继续堆修复，由人工澄清或拆分需求。
+5. Cursor 对最终版本确认 `APPROVED`、相应检查通过且合入已获授权后，将 Draft 改为 Ready，默认使用 **Squash and merge**，保留 PR 编号。合入后核对结果、同步本机，再清理已确认不再使用的分支。
+
+### 模式 B：大型跨模块功能
+
+1. 从最新 `main` 创建并推送父功能集成分支 `feat/<feature>`，暂不合入 `main`。
+2. 从父分支切出子分支 `feat/<feature>-<module>`；每个子任务有独立 Draft PR，**base 必须是父分支，不能直接指向 main**。
+3. 每个子 PR 走实现、自测、只读审查、同分支修复和合入父分支的闭环；合入前核对依赖及目标分支。
+4. 全部子 PR 完成并通过整体联调后，再创建父分支到 `main` 的总 PR，明确包含的子 PR、整体测试及限制，按审核与授权流程合入。
+
+### 合并与授权边界
+
+- 新 PR 默认采用 Squash。若用户明确要求 **Create a merge commit / 保留原提交 SHA**，按该要求执行，并核对双亲、原提交祖先关系与合并树；不改写历史以迁就新默认规则。
+- 审查结论与操作授权分别核对。已明确授权的 Ready、合入、推送等操作不重复请求许可；用户说“先审核、再决定合入”时，保持 Draft，不能仅凭评论或通用流程自行合并。
+- 删除分支前确认已合入且没有本地独有工作。历史证据分支、他人分支及仍被子 PR 使用的父分支不自动删除。打标签及发布按用户授权范围执行，不自动发布 Release。
+
+## 4. PR 信息、工具与安全操作
+
+- PR 是过程记录的唯一协作入口。正文先写具体问题和最终行为，再写范围、base/head、实际测试命令和结果、未测项及下一步停止点。范围变化时重写正文，不堆叠过时方案。
+- 优先使用可用的 GitHub 插件；`gh` CLI 是等价后备方式，不强制安装或使用某一个工具。工具不可用或发布失败时，在当前会话提供可发布的内容并说明未发布，不能声称已评论或已建 PR。
+- CLI 的多行正文使用 UTF-8 临时文件与 `--body-file`，临时文件放仓库外的系统临时目录，不在仓库生成交接稿，不把动态文本拼成可执行 shell。
+- 只 `git add -- <明确文件列表>`，禁用 `git add .` 或全目录盲目暂存。提交前检查 staged diff、文件清单及敏感值；不提交报告、锁、配置或他人文件。
+- 使用适合本次改动的测试。功能/修复覆盖必要的边界及回归；仅文档改动检查事实、引用、差异和脱敏，不机械重复全量测试。区分本轮运行结果与沿用的历史证据。
+- 不为推送/合并问题执行无授权的 force push、`reset --hard`、清锁或重写历史；网络失败重试前先确认远端状态，避免重复 PR 或重复发布。
+
+常用 CLI 示例（命令中的变量需由当前任务实际值设置）：
+
+```powershell
+git push -u origin HEAD
+gh pr create --base main --draft --title $prTitle --body-file $prBodyFile
+gh pr view $prNumber --comments
+gh pr comment $prNumber --body-file $reviewBodyFile
+```
+
+大型任务的子 PR 将 `--base main` 换为实际父功能分支。建 PR 或发表评论后读取远端确认编号、状态、base/head 与正文。
+
+审查评论格式：
+
+```markdown
+### Cursor 审查结论：REQUEST_CHANGES / APPROVED
+- 审查范围：PR 编号、base、head SHA
+
+#### 阻塞问题
+- [P1/P2] 文件:行号；触发条件、影响、建议；没有则写“无”。
+
+#### 需补充 / 重测项
+- 命令或用例、理由；区分必需项与非阻塞建议。
+
+#### 验证与限制
+- 实际运行命令及结果；未验证项。
+```
+
+修复回复逐项写明对应意见、修复提交 SHA、采取的改动和重测结果；有理由不采纳的意见明确说明，不把未处理项标成已解决。
+
+## 5. 长期知识与版本记录
+
+- PR 正文与评论保留开发、审查、修复和测试往返，不另建临时过程文档。
+- 审查通过、准备合并前，Codex 补齐长期文档；文档会影响接口或审查结论时，提交后让 Cursor 核对最终 head，不用旧 SHA 的审批替代最终版本确认。
+- 隐蔽 Bug、数据或边界问题沉淀到 `docs/PITFALLS.md`，每条不超过 6 行，包含日期、PR 编号、现象、根因、修复及防呆约定；没有实际踩坑不编造记录。
+- 每个待合入 main 的 PR 在 `CHANGELOG.md` 的 `[Unreleased]` 下增加 1～2 行摘要。文件尚不存在时在对应任务中建立，不为本次规则整合提前编造版本记录。
+- 继续维护本项目的 `docs/VERSION_HISTORY.md`：记录问题、改法、实际验证和限制，保留旧行；CHANGELOG 是简短摘要，不复制整张明细表。不要在提交内容中要求填入该提交自身的 SHA，改用可核对的已有提交或 PR 引用。
+- 阶段性功能完备后，在已验证的 main 上按授权创建版本 Git Tag；不把每个小修复都包装成里程碑。
+- 完成时在当前会话简述实际范围、验证、依赖变化、分支/提交/PR 与未完成项，并提供 PR 链接。未提交、未推送、未测试或未发布的状态必须明确。
