@@ -1,6 +1,6 @@
 # 干净安装、真实浏览器与目标容器验收方案
 
-状态：**待 Cursor 审方案，未获执行授权，未运行以下验收。** 本文是长期交付验收规范；Draft PR 仅改文档，不新增脚本、依赖、工作流、镜像配置或自动触发器。审查通过后由用户明确选择执行 A/B/C 的范围；方案通过、PR 合入均不等于已授权执行或已验收。
+状态：原方案 `3be931e` 已获 Cursor APPROVED，用户曾授权 A+B；A 的新 venv 创建成功，但 pip 安装退出 2，已按要求停止。B 未运行，C 与合入未授权。**本次修订仅只读排查及第 8 节的最小修复/重试提案，待 Cursor 对新 head 补审、用户重新授权；未重跑安装或进入 B。** 本文是长期交付验收规范，PR 仍只改文档，不新增执行脚本、依赖、工作流或自动触发器。
 
 ## 1. 固定对象与现有证据
 
@@ -12,8 +12,8 @@
 
 | 阶段 | 目标与环境 | 通过口径 | 当前情况 |
 | --- | --- | --- | --- |
-| A | Windows x64、Python 3.9、新源码导出与新 venv | 安装、pip check、全量离线与 Mock | 仅发现 py/python 命令；未创建新环境或安装 |
-| B | A 的隔离环境、真实本机 Edge/Chrome、回环 HTTP | 默认与显式假向量两种启动模式的页面/网络/回归 | 未启动服务或浏览器；浏览器工具可用性待执行前核对 |
+| A | Windows x64、Python 3.9、新源码导出与新 venv | 安装、pip check、全量离线与 Mock | 初轮 FAIL：venv 成功，pip 21.2.4 安装退出 2；后续 check/freeze/pytest/Mock/import 均未运行 |
+| B | A 的隔离环境、真实本机 Edge/Chrome、回环 HTTP | 默认与显式假向量两种启动模式的页面/网络/回归 | NOT_RUN，A 未通过；未启动服务或浏览器 |
 | C | Linux 容器、Docker Engine + Compose v2 | 当前默认镜像构建、禁用辅助服务、Mock 上传回查、保留卷重建 | 本机 PATH 未发现 docker CLI；不据此声称系统未安装 Docker |
 
 三阶段分别记 PASS / FAIL / BLOCKED / NOT_RUN。C 的 Linux/Compose 成功不能写成 Windows Docker Desktop 通过；B 的宿主机假向量演示也不能写成容器已启用假向量服务。
@@ -50,6 +50,8 @@ Expand-Archive -LiteralPath "$runRoot/source.zip" -DestinationPath "$runRoot/src
 每条外部命令检查退出码后才继续；安装/构建最长各 15 分钟，pytest 最长 10 分钟，服务健康就绪最多 60 秒，单条 HTTP 10 秒，单条 UI 用例最多 60 秒。首次失败保留证据并停止该阶段；不得静默重试安装、更换依赖/镜像、清库或变更预期以凑通过。A 失败不进入 B；C 独立记录环境阻塞，不能用历史 CI 成功补算。
 
 ## 3. A：干净安装与离线回归
+
+以下保留原基础流程；初轮安装已失败，**不可直接重跑**。新一轮须先满足第 8 节的前置条件、补审与授权，仅安装进程代理映射按该节修订，其余候选、依赖和断言不变。
 
 在净化后的子进程、`src-host` 工作目录执行；执行器记录每条命令、解释器完整路径/版本/位数、pip 版本、依赖实装清单和退出码：
 
@@ -154,3 +156,55 @@ A/B/C 全 PASS 且结果复审通过，才能称“该候选在所列环境完�
 ## 7. 命令依据
 
 命令语义核对使用 [Python 3.9 venv](https://docs.python.org/3.9/library/venv.html)、[pip 命令选项](https://pip.pypa.io/en/stable/cli/pip/) / [pip check](https://pip.pypa.io/en/stable/cli/pip_check/)、[Compose up](https://docs.docker.com/reference/cli/docker/compose/up/) / [down](https://docs.docker.com/reference/cli/docker/compose/down/) 官方文档。执行时仍须记录实际工具版本及选项支持情况，不能把网站最新版本号当成本机安装版本。
+
+## 8. pip 代理 TLS 失败：只读归因与待审最小重试
+
+### 8.1 原失败现场与当前允许范围
+
+原轮次 `accept-cd1791c4db6647bfbc3ede9db0cc5c60` 保持 A=FAIL、B=NOT_RUN、C=NOT_AUTHORIZED，不重开该轮的状态或使用其 venv 续装。`py -3.9 -m venv` 成功，安装命令启用 isolated/no-cache/零重试并使用公共 PyPI，退出码 2；错误为 `ValueError: check_hostname requires server_hostname`。原 stderr SHA 为 `f7ef0e84e3915f18f6faed1653ac6f575d331750f2d7f5732b9d024a809db93b`，原 stdout 为空。原日志、result.json、归档、脚本、venv 与导出都保留，不改写初轮证据。
+
+本次只读核对版本、代码、配置来源和代理元数据，Python 使用 `-B` 防止生成字节码；本地解析探针把 socket connect/create_connection 与 URL 打开入口设为拒绝。没有启动 pip CLI、握手、DNS/端口测试、下载、安装、服务或浏览器。只输出协议/回环/认证有无/端点一致等布尔或分类，不输出代理地址、端口、凭证、私有配置或 .env。
+
+### 8.2 已确认的失败机制与仍未知事项
+
+1. 现场为 **pip 21.2.4 / Requests 2.26.0 / urllib3 1.26.6**，依据新 venv 自带源码/元数据，并未升级包。驱动清空环境后没有任何代理环境键，pip isolated 配置中也没有生效的 proxy 项。
+2. Requests 的 `Session.merge_environment_settings()` 在 `trust_env` 下调用 `get_environ_proxies()`；它最终进入 Python 3.9 `urllib.request.getproxies()`。该函数在环境代理为空时回退 Windows 注册表。`--isolated` 忽略 pip 配置来源，不会把 Requests 的 `trust_env` 关闭；清空环境不能阻断注册表代理。
+3. 同一白名单环境的只读解析表明，PyPI 的实际选中项与注册表 HTTPS 项相同：scheme 为 `https`、主机为回环 IP、无内嵌认证。注册表另有 `http` 项：scheme 为 `http`，同样为回环 IP、无认证，host/port 与 HTTPS 项相同。
+4. 现场 `urllib3.connection.HTTPSConnection._connect_tls_proxy()` 将代理 SSL context 的 `check_hostname` 设为 True；`urllib3.util.ssl_.ssl_wrap_socket()` 在主机为 IP 时省略传给底层的 `server_hostname`。Python 3.9 `ssl.SSLSocket._create()` 恰在 `check_hostname=True` 且 `server_hostname` 为空时抛出上述 ValueError，与失败调用栈一致。
+5. 本地无 socket 的分支捕获使用虚构 IP/域名验证：该版本 IP 分支确实省略 hostname，域名分支传递 hostname。另一个纯解析探针表明，安装子进程显式给 HTTP/HTTPS 目的地址都配置现有 HTTP 项，可选中 `http` scheme 且端点不变；这不是网络或安装验证。
+
+已确认的是“注册表回退 + IP 形式 HTTPS 代理 + 旧 TLS 包分支”造成当前本地参数错误。**未确认**：本地代理端口是否实际支持 HTTP CONNECT、是否能够访问公共 PyPI、包能否下载、干净安装能否成功。不能把注册表 scheme 当作真实服务协议探测，也不能据此判定 requirements 冲突或模型 Key 问题。
+
+代理发现依据见 [Python getproxies](https://docs.python.org/3.9/library/urllib.request.html#urllib.request.getproxies)；HTTP 代理用于 HTTPS 目的地址时，经 CONNECT 隧道再与目的服务器做 TLS，见 [urllib3 1.26.6 代理说明](https://urllib3.readthedocs.io/en/1.26.6/advanced-usage.html#http-and-https-proxies)。这里引用协议语义，不声称当前本机端口已支持或已试连成功。
+
+### 8.3 最小修复提案：只在安装子进程使用已配置的 HTTP 代理项
+
+这是**待审且尚未实施**的进程级代理映射修订，不改 requirements、Python/pip/urllib3、应用、原驱动或系统代理配置。先由用户确认，或由获准的本地配置只读证据确认：该既有 HTTP 项对应 HTTP CONNECT 服务；不以一次端口/网络试探代替前置确认。当前只读证据尚不能满足真实服务协议确认，未满足时保持 BLOCKED，不运行安装。
+
+取得修订方案审核和用户重试授权后，执行器仅在内存读取现有 HTTP 注册表项，验证它仍是 `http`、回环 IP、有合法端口、无 username/password、path/query/fragment，且与原 HTTPS 项的 host/port 相同；任一不符即停止，不猜协议、不换主机/端口、不接受带认证代理。
+
+只对**新一轮安装子进程**在原白名单上追加两个小写键（示意，不是当前执行代码）：
+
+```powershell
+# $verifiedHttpProxy 来自上述已确认协议、通过本地断言的现有 HTTP 项。
+# 不记录该变量值，不放在 CLI 参数、文件、PR 或父进程环境里。
+$installInfo.Environment['http_proxy'] = $verifiedHttpProxy
+$installInfo.Environment['https_proxy'] = $verifiedHttpProxy
+```
+
+`https_proxy` 的值也为现有 `http://…` 代理项：键表示目的地址类型，值的 scheme 表示到代理的传输。保留目标 `https://pypi.org/simple` 及目标 TLS 证书/主机名验证；不使用 trusted-host、关闭证书验证、改 CA、no_proxy=*、直连回退、SOCKS 切换或私有 index。`--isolated` 保持开启：已在本地源码/纯解析中确认 Requests 仍会读取这些标准代理键；不能改用会被 isolated 忽略的 PIP_PROXY。
+
+安装结束即销毁该子进程环境；这两个键不传给 venv 创建、pytest/Mock、应用或 B，不修改用户全局环境、注册表、pip.ini 或 .env。LOCALAPPDATA/HOME 仍不加入白名单，也不恢复完整环境继承。
+
+### 8.4 单轮重试、通过口径与停止点
+
+新 head 获 Cursor 补审、协议确认及用户明确允许重试后，才：
+
+1. 再次冻结源码 **3005819 完整 SHA**；为所有旧报告/锁及**整个失败现场**建立新 SHA 清单。创建全新 run_id / 双导出 / venv / 日志 / 数据库路径，不复用失败轮、清缓存或删除证据。
+2. 用原白名单执行一次 venv 创建，核对自带 pip/Requests/urllib3 版本仍与本方案一致；版本变化、环境缺失或预检失败立即停止，不自行升级/安装修补包。
+3. 在尚未发网时验证生效代理来自上述显式 HTTP 项、端点不变且无认证，仅保存脱敏元数据；不调用 pip config list 或输出参数值。日志/异常中出现本地代理地址必须先脱敏后对外汇报，原始日志只留本轮忽略目录。
+4. 仅调用**一次**安装命令，使用 `--isolated --retries 0 install --no-cache-dir --index-url https://pypi.org/simple -r requirements.txt`，最长 15 分钟。保留退出码与 stdout/stderr；失败立即停止，不能自动改为直连、升级 pip、换镜像/代理或再次调用安装。
+5. 仅安装成功后运行原 A 的 pip check/freeze、全量 731 项、Mock 13/13 和默认新进程导入检查；各步骤最多执行一次，失败停止。所有预期仍对应冻结源码，不调整业务断言。
+6. A 全通过后仍停在报告结果，等待用户明确允许继续 B；**本修订申请不自动恢复初轮已中止的 B 授权**。B/C、#40 Ready/合入、发布、系统环境变更和真实模型调用不在单轮 A 重试授权中。
+
+模型/Embedding 新尝试数与预算保持 **0**。公共依赖安装的 HTTP 数不能当作模型请求数，也不承诺它固定为某个数；只限制安装命令一次、网络重试为 0。若根因/协议未确认或修订未审，保持当前失败状态，不以“修复方案已写好”表示安装已恢复。
