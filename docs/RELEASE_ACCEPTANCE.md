@@ -1,6 +1,6 @@
 # 干净安装、真实浏览器与目标容器验收方案
 
-状态（2026-11-22）：单轮 A 重试已 PASS 并获复审。人工 B01 已在用户新授权轮完成一次默认 Mock 启动及既有页面证据整理；[Cursor 最新复核](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7079165948)确认后端与主要 Network 证据成立、记录 APPROVED，**不宣布 B01 或整段 B PASS**。三张用户既有脱敏截图现已补入本轮忽略目录，独立目视结论待补充；B02–B10=NOT_RUN，C 未执行、仍缺目标环境。当前只补长期文档与既有截图，不启动服务、不合入、不追加真实请求。第 8–9 节保留各历史时点的诊断与提案；最新实际状态及人工三时钟见第 10 节。PR 仍只改文档，不新增受管执行器、依赖或自动触发器。
+状态（2026-11-22）：单轮 A 重试已 PASS 并获复审。人工 B01 已在用户新授权轮完成一次默认 Mock 启动及既有页面证据整理；[Cursor 最新复核](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7079165948)确认后端与主要 Network 证据成立、记录 APPROVED，**不宣布 B01 或整段 B PASS**。三张用户既有脱敏截图已获 [Cursor 独立目视补核](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7079563852)，B01 第 4 节表断言已独立确认；B02–B10=NOT_RUN，C 未执行、仍缺目标环境。当前只补长期文档与既有截图，不启动服务、不合入、不追加真实请求。第 8–9 节保留各历史时点的诊断与提案；最新实际状态及人工三时钟见第 10 节。PR 仍只改文档，不新增受管执行器、依赖或自动触发器。
 
 ## 1. 固定对象与现有证据
 
@@ -274,13 +274,13 @@ $installInfo.Environment['https_proxy'] = $verifiedHttpProxy
 
 打开信号 20:02:07、人工截止 20:12:07；用户证据 20:08:03 收到，20:08:10 服务收尾（均北京时间）。所属 launcher 已停止、8000 无监听；8453 个旧输出文件与 286 个原始文件 SHA 不变。用户后续只清除既有 Network 筛选、展开时间范围并提供原记录，没有重开服务。三条 Network 为主页 document 200/4 ms、status fetch 200/4 ms、favicon.ico 404/4 ms；原服务日志确认主路径 GET，无 POST，另有 DevTools 探测路径 404。
 
-证据索引与 [Network 补充](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7078983054)已获评论 7079165948 只读复核。原 result 为 PENDING_INDEPENDENT_REVIEW，不改写。后续在 `user-screenshots/` 新增三张已有附件及 SHA 清单供 Cursor 目视，不将聊天转述冒充独立 UI 审查；不把截图或原日志提交 Git。
+证据索引与 [Network 补充](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7078983054)已获评论 7079165948 只读复核。原 result 为 PENDING_INDEPENDENT_REVIEW，不改写。后续在 `user-screenshots/` 新增三张已有附件及 SHA 清单，已获评论 7079563852 独立目视补核，确认 B01 第 4 节表内页面断言；不将此扩大为整段 B 通过，不把截图或原日志提交 Git。
 
 Cursor 确认 favicon/DevTools 两条 404 不阻塞 B01 表断言，但 Console 不能写“零错误”，整段 B 的该条件尚未满足。工具栏 1366×900、用户截图可见控件不等于独立测量 CSS 视口/InPrivate 标记/60 秒观察时长；这些限制保持。B01/整段 B 不自动记 PASS，不为这两条 404 改冻结应用或再开服务。
 
 ### 10.3 下一步范围
 
-当前只请 Cursor 查看本轮 `user-screenshots/page-console.png`、`disabled-advisory.png`、`network-all.png` 及 `manifest.json`，在 #40 补充独立目视结论；图片缺失/不可读时报告缺证据，不新拍、不刷新、不启动。
+本轮 `user-screenshots/page-console.png`、`disabled-advisory.png`、`network-all.png` 及 `manifest.json` 已获 Cursor 评论 7079563852 核对 SHA/字节并独立目视；B01 表断言已确认。保留 CSS 视口/InPrivate/观察时长与 Console 404 限制，不改原 result、不重开服务或重拍。
 
 B02–B10 仍以第 4 节矩阵为后续候选范围：包含合成 PDF 上传/落库/回查、默认与显式假向量两种模式、视口/键盘、假索引重启与仅本轮新索引的故障演练。用户需另行明确授权所选范围及启动/重启/故障操作，再按新 run_id 执行；本次文档更新不是执行授权，不把 B01 的一次启动额度搬到下一轮。C 单独选择目标环境并授权，不安装 Docker/WSL 或复用旧 CI 结果。
 
