@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-- 检索质量独立验证、真实 Embedding 接线与 Windows Docker Desktop 仍未做。
+- 新增与 v1 不相交的 12 条 held-out 检索查询；授权 live 一轮 15 向量/3 HTTP/0 重试，Recall@1=8/9，HV005 错排，质量未过关，未接线。
+- 真实 Embedding 接线与 Windows Docker Desktop 仍未做。
 
 ## [v0.6-delivery-acceptance]
 
