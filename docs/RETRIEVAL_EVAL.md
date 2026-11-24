@@ -201,7 +201,23 @@ PDF 抽取/闸门、确定性路由与五维评分、显式 DeepSeek、LangGraph
 
 状态 `SUCCESS`、3 HTTP、0 重试，用量 608 token，估算 ¥0.000304，预留 ¥0.06144，授权预算 ¥0.10，账单未核验。Recall@1=8/9、Recall@3=9/9（分母 9 条有相关岗位查询）。唯一 top-1 分差为 HV005：标注 JD2 相关，模型将 JD1 排在第一。3 条无相关查询 Recall 为 null，其 top-1 不算拒绝成功。`quality_conclusion=NOT_ESTABLISHED`。v1 SHA `704ff394…` 与 held-out SHA `e1d0b0be…` 未改。报告 `retrieval-heldout-live-59dc7cfd….json` SHA `0ecfaffb…`，新锁 SHA `5a89f947…`，不提交。
 
-Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 Embedding 接线版本的容器验收。更多独立合成项目样本与 DeepSeek 质量验证不阻塞当前可演示交付，须另开样本与预算。当前预算仅覆盖已经结束的本轮，后续不自动发请求、开新轮或更改评分。
+Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 Embedding 接线版本的容器验收。更多独立合成项目样本与 DeepSeek 质量验证不阻塞当前可演示交付，须另开样本与预算。held-out 本轮已结束，不重跑。
+
+## 2026-11-24 检索质量 v2（离线已就绪，live 未跑）
+
+用户同意新一轮、不重跑旧实验。本轮**不改**筛选 `jobs.json`、v1、held-out 金标或阈值。
+
+| 项 | 值 |
+| --- | --- |
+| 评测岗位 | JD1–JD3 原文与筛选相同；JD4 Java/Spring、JD5 Spark/Hive、JD6 Android 仅存在于评测 JSON |
+| 查询 | QV001–QV018，与 RV/HV 文本不相交；每岗 2 条相关 + 6 条无关 |
+| 向量 / HTTP | 6 document + 18 query = 24；批次 6/10/8；最多 3 HTTP、0 重试 |
+| 预算 | ¥0.10；按 24×8192 token 预留 ¥0.098304 |
+| 锁 | 新 `retrieval-quality-v2-live.lock`；旧三把锁不删不改 |
+| 标签 | 起草方 Cursor，`PENDING_INDEPENDENT_REVIEW` |
+| 入口 | `eval.run_retrieval_v2` 默认/假向量；`--live` 拒绝。`eval.run_retrieval_v2_live` 默认预览 |
+
+假向量只测程序：故意让 QV002/QV004/QV010 错排第一，Recall@1=9/12、Recall@3=12/12。质量结论仍为 `NOT_ESTABLISHED`。真实请求 0。要发 HTTP 须另说「允许运行」。
 
 ### 2026-11-24 HV 标签复核（起草方，用户授权）
 
