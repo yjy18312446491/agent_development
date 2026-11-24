@@ -1,6 +1,6 @@
 # LangGraph 与辅助检索合入后的容器复验
 
-本文只记录 `6ad54cb` 的历史 Linux/Compose 复验，不改写下表数字。冻结应用 `300581980ef2f1da4e9a7d96ecc62aea79bd7b9c` 的交付验收 C01–C06 见 [RELEASE_ACCEPTANCE.md §13](RELEASE_ACCEPTANCE.md#13-c-linuxcompose-实际结果2026-11-24) 与 [运行 45336976003](https://github.com/yjy18312446491/agent_development/actions/runs/45336976003)；独立工作流留在 Draft [PR #41](https://github.com/yjy18312446491/agent_development/pull/41)，不合入本文。
+本文只记录 `6ad54cb` 的历史 Linux/Compose 复验，不改写下表数字。冻结应用 `300581980ef2f1da4e9a7d96ecc62aea79bd7b9c` 的交付验收 C01–C06 见 [RELEASE_ACCEPTANCE.md §13](RELEASE_ACCEPTANCE.md#13-c-linuxcompose-实际结果2026-11-24) 与 [运行 45336976003](https://github.com/yjy18312446491/agent_development/actions/runs/45336976003)；独立工作流后经 [PR #41](https://github.com/yjy18312446491/agent_development/pull/41) Squash 合入 `f2c5812`，本文数字不改写。
 
 2026-11-19 在 GitHub 托管 Ubuntu 运行器完成 Linux Docker Compose 复验。应用源码固定为 main 的 `6ad54cb009a64ecb5b51281a4e5ff0e803379332`，其中包含 PR #26 的图编排和 PR #27 的辅助检索。当前文档提交不改变应用、依赖或容器配置。
 

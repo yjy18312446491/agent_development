@@ -15,10 +15,12 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import FormData, UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.requests import ClientDisconnect
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, Response
 
 from app.advisory import DemoAdvisor, advisory_router
+from app.batch_advisory import attach_embedding_advisory
 from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, PROMPT_VERSION_V2
+from app.embedding_client import EmbeddingClient, EmbeddingConfig, EmbeddingError
 from app.project_scorer import make_injected_scorer
 from app.score import ProjectScorer, ProviderStoppedError
 from app.screen import screen_many
@@ -118,9 +120,20 @@ def _make_deepseek_scorer(file_count: int) -> ProjectScorer:
     return make_injected_scorer(request)
 
 
-def _screen_and_save(uploads: List[UploadFile], project_scorer: Optional[str] = None) -> dict:
+def _screen_and_save(
+    uploads: List[UploadFile],
+    project_scorer: Optional[str] = None,
+    advisory: Optional[str] = None,
+) -> dict:
     scorer = _make_deepseek_scorer(len(uploads)) if project_scorer == "deepseek" else None
+    embed_config = None
+    if advisory == "embedding":
+        try:
+            embed_config = EmbeddingConfig.from_env_file(ROOT / ".env")
+        except EmbeddingError:
+            raise HTTPException(503, "辅助检索未配置") from None
     batch_id = uuid4().hex
+    advisory_payload = None
     try:
         with TemporaryDirectory(prefix="screen-upload-") as directory:
             paths = []
@@ -130,6 +143,8 @@ def _screen_and_save(uploads: List[UploadFile], project_scorer: Optional[str] = 
                     copyfileobj(upload.file, target)
                 paths.append(path)
             records = screen_many(paths, project_scorer=scorer)
+            if embed_config is not None:
+                advisory_payload = attach_embedding_advisory(paths, EmbeddingClient(embed_config))
 
         db_path = _db_path()
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,7 +153,10 @@ def _screen_and_save(uploads: List[UploadFile], project_scorer: Optional[str] = 
             items = fetch_batch(conn, batch_id)
     except (OSError, sqlite3.Error):
         raise HTTPException(500, "批次保存失败") from None
-    return {"batch_id": batch_id, "items": items}
+    payload = {"batch_id": batch_id, "items": items}
+    if advisory_payload is not None:
+        payload["advisory"] = advisory_payload
+    return payload
 
 
 @router.get("/health")
@@ -151,6 +169,16 @@ def demo() -> FileResponse:
     return FileResponse(Path(__file__).with_name("static") / "demo.html", media_type="text/html")
 
 
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    return Response(status_code=204)
+
+
+@router.get("/.well-known/appspecific/com.chrome.devtools.json", include_in_schema=False)
+def chrome_devtools_probe() -> Response:
+    return Response(status_code=204)
+
+
 @router.post(
     "/batches",
     openapi_extra={"requestBody": {"required": True, "content": {"multipart/form-data": {
@@ -159,9 +187,15 @@ def demo() -> FileResponse:
         }},
     }}}},
 )
-async def create_batch(request: Request, project_scorer: Optional[str] = None) -> dict:
+async def create_batch(
+    request: Request,
+    project_scorer: Optional[str] = None,
+    advisory: Optional[str] = None,
+) -> dict:
     if project_scorer not in (None, "deepseek"):
         raise HTTPException(422, "项目评分方式不符合要求")
+    if advisory not in (None, "embedding"):
+        raise HTTPException(422, "辅助检索方式不符合要求")
     if request.headers.get("content-type", "").partition(";")[0].strip().lower() != "multipart/form-data":
         raise HTTPException(422, INVALID_UPLOAD)
     parser = MultiPartParser(request.headers, _bounded_body(request), max_files=MAX_FILES, max_fields=0)
@@ -173,7 +207,7 @@ async def create_batch(request: Request, project_scorer: Optional[str] = None) -
         raise HTTPException(500, "批次保存失败") from None
     try:
         uploads = _validated_uploads(form)
-        return await run_in_threadpool(_screen_and_save, uploads, project_scorer)
+        return await run_in_threadpool(_screen_and_save, uploads, project_scorer, advisory)
     finally:
         await form.close()
 

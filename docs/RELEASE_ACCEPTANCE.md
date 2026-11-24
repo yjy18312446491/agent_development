@@ -406,7 +406,7 @@ B10 条目达到设计通过态。A/B01–B09 不重做。文档收口分项 B�
 
 ## 13. C Linux/Compose 实际结果（2026-11-24）
 
-本机 PATH 仍无 docker CLI，按方案不安装 Docker/WSL，也不复用旧固定 SHA 的 `ci/langgraph-runtime-verification` 结果。用户授权完成后，在独立分支 `ci/acceptance-c-3005819` / [Draft PR #41](https://github.com/yjy18312446491/agent_development/pull/41) 增加只读工作流：`git fetch` 冻结应用 `300581980ef2f1da4e9a7d96ecc62aea79bd7b9c`，在 GitHub 公共 `ubuntu-24.04` 运行器执行 C01–C06。该 CI 分支不合入本验收文档 PR，也不改 Codex 既有 CI 分支。
+本机 PATH 仍无 docker CLI，按方案不安装 Docker/WSL，也不复用旧固定 SHA 的 `ci/langgraph-runtime-verification` 结果。用户授权完成后，在独立分支 `ci/acceptance-c-3005819` / [PR #41](https://github.com/yjy18312446491/agent_development/pull/41) 增加只读工作流：`git fetch` 冻结应用 `300581980ef2f1da4e9a7d96ecc62aea79bd7b9c`，在 GitHub 公共 `ubuntu-24.04` 运行器执行 C01–C06。该 CI 当时不合入本验收文档 PR，也不改 Codex 既有 CI 分支；后经用户要求 Squash 合入 `f2c5812`，C 数字仍只对冻结 `3005819`。
 
 [运行 45336976003 success](https://github.com/yjy18312446491/agent_development/actions/runs/45336976003)。Engine `28.0.4`，Compose `v2.38.2`，ostype `linux`，镜像内 Python `3.9.25`。基础镜像仍为 `python:3.9.25-slim-bookworm@sha256:a02e9c5406c416c504d6c9a1a306ff4080c3173f1008d192f953bd20382a2d5c`。`--pull --no-cache` 构建，无宿主机端口，未启动 `advisory_demo`，真实模型请求 0。
 
