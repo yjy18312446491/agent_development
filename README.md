@@ -21,7 +21,7 @@
 - 已按授权完成独立相关性标签上的真实 15 向量基线：3 次 HTTP、零重试，9 条有相关岗位查询的 Recall@1=8/9，另 3 条无相关查询不计入分母；结果已获 Cursor 归档复审通过，尚未接入筛选，不改变 jd_id 或评分。[实测、局限与剩余 3 个里程碑](docs/RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 - 本地岗位向量索引已通过 PR #37 合入 main `71b09ec`，默认关闭，显式保存/加载并校验模型版本与岗位快照；全量 663 项、Mock 13/13 通过，未接入筛选或 HTTP，既有 jd_id 和评分不变。[索引说明](docs/VECTOR_INDEX.md)
-- 默认关闭的假向量辅助 API 与“合成样例证据演示”面板已通过 #39 代码审核及授权离线验收，Squash 合入 main `1c91381`。普通 FastAPI/Docker 入口保持关闭；只查询四个服务端固定样例，不处理用户上传内容，也不改变筛选评分。全量 Python 731 项、Mock 13/13 通过，专项模拟 DOM 脚本 6 项通过；真实浏览器、干净安装及目标容器验收待后续。[本机启动方式与边界](docs/RETRIEVAL_API.md)
+- 默认关闭的假向量辅助 API 与“合成样例证据演示”面板已通过 #39 代码审核及授权离线验收，Squash 合入 main `1c91381`。普通 FastAPI/Docker 入口保持关闭；只查询四个服务端固定样例，不处理用户上传内容，也不改变筛选评分。全量 Python 731 项、Mock 13/13 通过，专项模拟 DOM 脚本 6 项通过。冻结应用 `3005819` 的干净安装 A、真实浏览器 B 分项和 GitHub Linux Compose C 已归档，不等于检索质量通过或 Windows Docker Desktop 通过。[本机启动方式与边界](docs/RETRIEVAL_API.md) · [交付验收](docs/RELEASE_ACCEPTANCE.md)
 
 ## 目标架构
 
@@ -209,4 +209,6 @@ docker compose exec -T api python -c "import urllib.request; print(urllib.reques
 
 2026-11-18 已在 GitHub 托管 Linux 运行器上验证 `c908730`，使用 Docker Engine 28.0.4 和 Compose v2.38.2。构建、健康检查、合成 PDF 上传、非法上传 422 和重建回读均通过。Windows 宿主机的 Docker Desktop 尚未验收。 [容器验收日志](https://github.com/yjy18312446491/agent_development/actions/runs/44243560755)
 
-2026-11-19 已复验包含 LangGraph 和辅助检索接口的 main 源码 `6ad54cb`：镜像构建、固定依赖、非 root 权限、Mock 上传、SQLite 回读和保留卷重建全部通过。检索默认关闭，假向量调用验证通过，未调用真实模型或 Embedding。Windows Desktop 仍待验收。[最新容器日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [验证范围与复现说明](docs/CONTAINER_VALIDATION.md)
+2026-11-19 已复验包含 LangGraph 和辅助检索接口的 main 源码 `6ad54cb`：镜像构建、固定依赖、非 root 权限、Mock 上传、SQLite 回读和保留卷重建全部通过。检索默认关闭，假向量调用验证通过，未调用真实模型或 Embedding。[当时日志](https://github.com/yjy18312446491/agent_development/actions/runs/44532474624) · [历史复验范围](docs/CONTAINER_VALIDATION.md)
+
+2026-11-24 已对冻结应用 `300581980ef2f1da4e9a7d96ecc62aea79bd7b9c` 完成交付验收 C01–C06：GitHub `ubuntu-24.04`，Engine 28.0.4 / Compose v2.38.2，S001=`JD1 / B / 60 / mock`，S002=`REVIEW / EMPTY / -1`，保留卷重建通过，真实模型请求 0。本机未安装 Docker Desktop，Linux 通过不等于 Windows Desktop。[C 运行](https://github.com/yjy18312446491/agent_development/actions/runs/45336976003) · [验收记录](docs/RELEASE_ACCEPTANCE.md#13-c-linuxcompose-实际结果2026-11-24)
