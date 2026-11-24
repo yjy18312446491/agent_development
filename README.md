@@ -18,7 +18,7 @@
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
 - FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数；辅助向量检索接口默认关闭。本机已用显式 `--live` 跑通 10 向量传输冒烟，默认筛选仍为 Mock，排序不是检索准确率。[实测与局限](eval/README.md#2026-11-20-真实-embedding-冒烟)
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
-- 已按授权完成独立相关性标签上的真实 15 向量基线：3 次 HTTP、零重试，9 条有相关岗位查询的 Recall@1=8/9，另 3 条无相关查询不计入分母；结果已获 Cursor 归档复审通过，尚未接入筛选，不改变 jd_id 或评分。[实测、局限与剩余 3 个里程碑](docs/RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
+- 已按授权完成独立相关性标签上的真实 15 向量基线：3 次 HTTP、零重试，9 条有相关岗位查询的 Recall@1=8/9，另 3 条无相关查询不计入分母；held-out 同样 8/9。结果只是描述性基线，质量未过关；筛选图不接入检索，HTTP 仅显式 `advisory=embedding` 旁路，不改变 jd_id 或评分。[实测与限制](docs/RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
 - 本地岗位向量索引已通过 PR #37 合入 main `71b09ec`，默认关闭，显式保存/加载并校验模型版本与岗位快照；全量 663 项、Mock 13/13 通过，未接入筛选或 HTTP，既有 jd_id 和评分不变。[索引说明](docs/VECTOR_INDEX.md)
 - 默认关闭的假向量辅助 API 与“合成样例证据演示”面板已通过 #39 代码审核及授权离线验收，Squash 合入 main `1c91381`。普通 FastAPI/Docker 入口保持关闭；只查询四个服务端固定样例，不处理用户上传内容，也不改变筛选评分。全量 Python 731 项、Mock 13/13 通过，专项模拟 DOM 脚本 6 项通过。冻结应用 `3005819` 的干净安装 A、真实浏览器 B 分项和 GitHub Linux Compose C 已归档，不等于检索质量通过或 Windows Docker Desktop 通过。[本机启动方式与边界](docs/RETRIEVAL_API.md) · [交付验收](docs/RELEASE_ACCEPTANCE.md)
@@ -126,7 +126,7 @@ print([(hit.reference_jd_id, hit.similarity) for hit in advice.hits])
 # 假向量全部相同，并列按 ID 排序：[("JD1", 1.0), ("JD2", 1.0)]
 ```
 
-缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。独立 Embedding 客户端已完成受控真实传输冒烟与小样本相关性基线，尚未接入筛选；本地索引与 HTTP 演示仅使用假向量，真实向量持久化及扩大质量验证仍待后续。[接口与测试边界](docs/RETRIEVAL.md)
+缺少提供器、空输入或非法向量返回辅助接口的 `REVIEW` 和空证据，不写入筛选记录。独立 Embedding 客户端已完成受控真实传输冒烟与小样本相关性基线；筛选图仍不调用检索。HTTP 仅在 `POST /batches?advisory=embedding` 时附加当次旁路。本地索引与 Demo 面板使用假向量。质量未过关，不扩大真实请求。[接口与测试边界](docs/RETRIEVAL.md)
 
 ## 运行本地 FastAPI
 

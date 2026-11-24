@@ -42,7 +42,7 @@
 
 ## 待完成
 
-当前剩余（2026-11-24）：冻结 `3005819` 的 A/B/C 已合入；[#42](https://github.com/yjy18312446491/agent_development/pull/42) / [#41](https://github.com/yjy18312446491/agent_development/pull/41) 已 Squash 合入 `1dca73c`、`f2c5812`。检索质量仍未过关（Recall@1=8/9）。默认筛选仍 Mock；`POST /batches?advisory=embedding` 为显式旁路，不改 `jd_id`/分数，不写入 SQLite，Docker 默认关闭。Windows Docker Desktop 仍可选未装。以下为历史条目。
+当前剩余（2026-11-24）：可演示交付已按限制收口。冻结 `3005819` 的 A/B/C、[#41](https://github.com/yjy18312446491/agent_development/pull/41)/[#42](https://github.com/yjy18312446491/agent_development/pull/42)/[#43](https://github.com/yjy18312446491/agent_development/pull/43) 均已合入。检索质量未过关（Recall@1=8/9）是已知限制，不是待修指标；HV 36 条标签经用户授权由起草方复核后全部维持，数据仍为 `PENDING_INDEPENDENT_REVIEW`，未冒充第二双眼睛。默认筛选 Mock；Embedding 仅显式 `advisory=embedding`。Windows Docker Desktop、新的真实 Embedding、扩样本 DeepSeek 均须另授。以下为历史条目。
 
 - 12 条独立中文合成查询及 36 条相关性标签已获得 [Cursor 更正补审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056976801)，假向量离线评测已通过 PR #33 合入 `d00a31e`。独立复审记录与评测前输入指纹已获 [#34 补审通过](https://github.com/yjy18312446491/agent_development/pull/34#issuecomment-7058205770)，经用户授权以 merge commit `cac1216` 合入 main，双亲 `d00a31e` / `18695bb`，树与审查 head 相同，保留原提交关系。原标签 JSON/SHA 和历史编写状态不变；APPROVED 只指标签复审，模型质量仍待验证，原锁保留。[评测规范](RETRIEVAL_EVAL.md)
 
@@ -54,8 +54,8 @@
 - 历史 B03-only（2026-11-22）：[Cursor 7080928381](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7080928381)确认后续 M1 的 B02、B04 默认证据成立，B03 仍缺刷新。用户授权的新一轮在默认就绪检查发现 fixed-fake-vectors 后立即停止：执行器分发条件漏改，未给用户发送 READY、没有页面/批次操作或真实模型请求；原库/副本 SHA 不变，8817 旧文件、286 原始源码及 143 新源码匹配。本轮新假索引/执行器/失败结果保留。默认专用入口修复候选及父执行器入口核对已准备，13 项离线 mock 检查通过；没有再次启动。B03/B04 启用/B05–B10/C 仍未完成，修复候选和新重试须复审/适用授权，不能复活旧轮或声称整段 B 通过。
 - 辅助证据 API/Demo [契约](RETRIEVAL_API.md) 的 #38 方案已审合入 `bd1795f`；实现 #39 `7e48931` 已获 [Cursor 代码 APPROVED](https://github.com/yjy18312446491/agent_development/pull/39#issuecomment-7059799414)。按用户明确授权，在该不变 head 上全量 **731 passed**、Mock **13/13** 后 Ready + Squash 合入 main `1c91381`，唯一父提交 `3332550`，树与已审/已测 head 相同，本机同步。默认关闭、本机四样例假向量、只读固定索引与独立面板已具备；原专项 191 项及模拟 DOM 6 项通过，S001 仍 JD1/60。无新依赖、真实请求、jd_id/评分或 Docker 变化；`eval/reports` 全部 33 份旧文件 SHA 不变，Mock 使用新忽略文件。运行中服务/真实浏览器、干净安装和目标容器交付验收待单独方案及授权；假向量演示不等于语义质量通过。
 - 默认关闭的 `vector_index` 已获 [Cursor 对 #37 的 APPROVED](https://github.com/yjy18312446491/agent_development/pull/37#issuecomment-7058812760)。按用户明确授权，在不改审查 head `aaa8508` 的前提下全量 663 项、Mock 13/13 通过，再 Ready + Squash 合入 `71b09ec`；唯一父提交 `6cf0993`，树与已审/已测 head 相同，本机 main 已同步。索引有模型/维数/revision、岗位/内容快照校验与不覆盖的原子发布；仅假向量验证，真实向量来源、API/Demo 接线及目标容器验收未做。不改 jd_id、评分或真实锁，后续接线先审具体方案。[范围与边界](VECTOR_INDEX.md)
-- 按可演示完整交付仍有 3 个收尾里程碑：① 本轮质量复审和独立样本验证；② 可重用本地向量索引及默认关闭的辅助证据接线；③ 最终版本的干净安装/集成/容器/Demo 验收与发布材料。当前独立基线只给小样本描述性结果，不改变规则路由；新增真实实验另行审范围与预算，不重跑已结束轮次。[剩余完成标准](RETRIEVAL_EVAL.md#距离可演示完整交付的剩余里程碑)
-- 复审 v2 完整对照，补充更多合成项目样本的评测
+- 三个收尾里程碑已按限制收口：质量结论保持 `NOT_ESTABLISHED`（8/9）；假向量索引与显式 `advisory=embedding` 已合入；冻结应用 A/B/C 已归档。独立基线只给小样本描述性结果，不改变规则路由；新增真实实验另行审范围与预算，不重跑已结束轮次。[剩余完成标准](RETRIEVAL_EVAL.md#距离可演示完整交付的剩余里程碑)
+- 扩更多合成项目样本与 DeepSeek 对照不阻塞当前交付，须另开标注与预算。
 
 ## 指标口径
 

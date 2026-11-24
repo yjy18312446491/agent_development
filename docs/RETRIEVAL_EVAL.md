@@ -170,15 +170,15 @@ PDF 抽取/闸门、确定性路由与五维评分、显式 DeepSeek、LangGraph
 
 | 里程碑 | 当前缺口 | 完成标准 |
 | --- | --- | --- |
-| 1. 检索质量复审与独立验证 | v1 与 held-out live 均为 Recall@1=8/9；HV005 与 RV005 同类错排；拒绝匹配未验证 | 保留原标签与 SHA；不得用这批调阈值；结果只是描述性，`quality_conclusion=NOT_ESTABLISHED` |
+| 1. 检索质量复审与独立验证 | 已按现有 v1/held-out 收口：Recall@1 均为 8/9，质量未过关 | 保留原标签与 SHA；不得用这批调阈值；`quality_conclusion=NOT_ESTABLISHED` 为交付限制，不是待修指标 |
 | 2. 本地索引与辅助证据接线 | 假向量演示已合入；真实 Embedding 仅显式 `advisory=embedding` 旁路，Docker 默认仍关闭 | 默认 Mock；旁路不改规则 `jd_id` 与五维评分、不写入 SQLite；镜像不读提供器配置 |
-| 3. 最终整体验收和发布材料 | 冻结 `3005819` 的 A/B/C 已完成；接线后的新版本需重新验收 | 干净安装、真实浏览器分项、Linux Compose 与入口文档已对冻结应用归档；Windows Desktop 仍可选；版本标签按授权打在已验证 main |
+| 3. 最终整体验收和发布材料 | 冻结 `3005819` 的 A/B/C 已归档；#43 旁路未再跑整段 A/B/C | 干净安装、真实浏览器分项、Linux Compose 与入口文档已对冻结应用归档；Windows Desktop 仍可选；版本标签按授权打在已验证 main |
 
 ## 独立验证样本与质量口径（held-out）
 
 新增 `data/synthetic/retrieval/relevance_heldout_v1.json`（`dataset_id=retrieval-relevance-heldout-v1`），12 条中文合成查询 HV001–HV012，36 个标签，覆盖组仍为 JD1/JD2/JD3/none 各 3 条。查询与 v1 的 RV001–RV012 文本不相交，岗位 SHA 与 v1 相同。入口 `eval.run_retrieval_heldout` 默认预览、`--fake` 才构造 3 维控制向量；拒绝 `--live`，真实请求 0。报告前缀 `retrieval-heldout-`，不写查询原文。
 
-标签由 Cursor 起草，`annotation_review_status=PENDING_INDEPENDENT_REVIEW`，不能冒充已审。v1 规范化 SHA 仍为 `704ff394…`；held-out 规范化 SHA 为 `e1d0b0be…`。加载时若 v1 SHA 变化或查询撞车，立即拒绝。
+标签由 Cursor 起草。数据 JSON 仍为 `draft_pending_independent_review`，报告仍为 `PENDING_INDEPENDENT_REVIEW`，SHA `e1d0b0be…` 不变。2026-11-24 用户要求本会话审核剩余项：36 条标签已对照 `jobs.json` 与 v1 等级口径核对，**全部维持原等级，无阻塞改标**。这是起草方受用户授权的复核，不是第二双眼睛的独立 APPROVED，不能改写成已审金标。v1 规范化 SHA 仍为 `704ff394…`。加载时若 v1 SHA 变化或查询撞车，立即拒绝。
 
 质量口径（尚未宣称通过）：
 
@@ -201,4 +201,25 @@ PDF 抽取/闸门、确定性路由与五维评分、显式 DeepSeek、LangGraph
 
 状态 `SUCCESS`、3 HTTP、0 重试，用量 608 token，估算 ¥0.000304，预留 ¥0.06144，授权预算 ¥0.10，账单未核验。Recall@1=8/9、Recall@3=9/9（分母 9 条有相关岗位查询）。唯一 top-1 分差为 HV005：标注 JD2 相关，模型将 JD1 排在第一。3 条无相关查询 Recall 为 null，其 top-1 不算拒绝成功。`quality_conclusion=NOT_ESTABLISHED`。v1 SHA `704ff394…` 与 held-out SHA `e1d0b0be…` 未改。报告 `retrieval-heldout-live-59dc7cfd….json` SHA `0ecfaffb…`，新锁 SHA `5a89f947…`，不提交。
 
-Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 Embedding 接线版本的容器验收。更多独立合成项目样本与 DeepSeek 质量验证纳入上述第 1 项。当前预算仅覆盖已经结束的本轮，后续不自动发请求、开新轮或更改评分。
+Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 Embedding 接线版本的容器验收。更多独立合成项目样本与 DeepSeek 质量验证不阻塞当前可演示交付，须另开样本与预算。当前预算仅覆盖已经结束的本轮，后续不自动发请求、开新轮或更改评分。
+
+### 2026-11-24 HV 标签复核（起草方，用户授权）
+
+对照岗位：JD1 Python/FastAPI/MySQL/Redis、三年以上；JD2 Python/Flask/MySQL、0～2.5 年且接受应届；JD3 JavaScript/TypeScript/Vue/React、一年以上页面经验。相关仍以等级 2 计。未改 JSON、未调阈值、未重跑 live。
+
+| 样本 | 覆盖 | 原等级 JD1/JD2/JD3 | 复核 |
+| --- | --- | --- | --- |
+| HV001 | JD1 | 2 / 1 / 0 | 维持：四年 FastAPI/MySQL/Redis 满足中级；缺 Flask 且超初级年限 |
+| HV002 | JD1 | 2 / 1 / 0 | 维持：三年半四项后端齐全；缺 Flask 且超初级年限 |
+| HV003 | JD1 | 2 / 1 / 0 | 维持：六年 FastAPI 后端；无 Flask、无前端 |
+| HV004 | JD2 | 1 / 2 / 0 | 维持：应届 Flask/MySQL 对齐初级；中级缺 FastAPI/Redis/年限 |
+| HV005 | JD2 | 1 / 2 / 0 | 维持：一年 Flask/MySQL 在初级范围内；中级框架与年限不足。live top-1 为 JD1 是模型错排，不改标 |
+| HV006 | JD2 | 1 / 2 / 0 | 维持：两年低于 2.5 年上限，Flask/MySQL 具体 |
+| HV007 | JD3 | 0 / 0 / 2 | 维持：一年半四项前端；无后端实现 |
+| HV008 | JD3 | 0 / 0 / 2 | 维持：两年组件/页面；他人接口不算后端 |
+| HV009 | JD3 | 0 / 0 / 2 | 维持：四年可视化页面；无服务端 |
+| HV010 | none | 0 / 0 / 0 | 维持：化学教学与办公软件 |
+| HV011 | none | 0 / 0 / 0 | 维持：仓库理货扫码 |
+| HV012 | none | 0 / 0 / 0 | 维持：销售支持与转行意向，无作品 |
+
+结论：36/36 维持；held-out 数据 SHA 不变；质量仍 `NOT_ESTABLISHED`。
