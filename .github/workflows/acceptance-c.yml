@@ -1,0 +1,190 @@
+name: Acceptance C Docker Compose
+
+on:
+  push:
+    branches: [ci/acceptance-c-3005819]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_COMMIT: 300581980ef2f1da4e9a7d96ecc62aea79bd7b9c
+      COMPOSE_PROJECT_NAME: accept${{ github.run_id }}
+    steps:
+      - name: Run C01-C06 against the frozen application SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init
+          git fetch --depth=1 https://github.com/yjy18312446491/agent_development.git "$SOURCE_COMMIT"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          project="$COMPOSE_PROJECT_NAME"
+          test -n "$project"
+          docker version --format '{{.Server.Version}}'
+          docker compose version
+          ostype="$(docker info --format '{{.OSType}}')"
+          test "$ostype" = "linux"
+          docker compose -p "$project" -f compose.yaml config --quiet
+          docker compose -p "$project" -f compose.yaml config --format json | python3 -c '
+          import json, sys
+          cfg = json.load(sys.stdin)
+          api = cfg["services"]["api"]
+          assert not api.get("ports")
+          assert api.get("privileged") in (None, False)
+          assert api.get("network_mode") != "host"
+          assert api["environment"]["SCREEN_DB_PATH"] == "/data/screen-results.sqlite"
+          print("C06 compose: no published ports, not privileged, not host network")
+          '
+          trap 'docker compose -p "$project" -f compose.yaml logs --no-color || true; docker compose -p "$project" -f compose.yaml down' EXIT
+          docker compose -p "$project" -f compose.yaml build --pull --no-cache
+          docker compose -p "$project" -f compose.yaml up -d --wait --wait-timeout 60
+          old_id="$(docker compose -p "$project" -f compose.yaml ps -q api)"
+          test -n "$old_id"
+          image_id="$(docker inspect --format '{{.Image}}' "$old_id")"
+          volume_id="$(docker volume ls -q --filter "name=${project}_screen-data")"
+          test -n "$image_id"
+          test -n "$volume_id"
+          test "$(docker compose -p "$project" -f compose.yaml exec -T api id -u)" = "1000"
+          docker compose -p "$project" -f compose.yaml exec -T api python -m pip check
+          docker compose -p "$project" -f compose.yaml exec -T api python - <<'PY'
+          from importlib.util import find_spec
+          from pathlib import Path
+          from tempfile import TemporaryFile
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+          import json
+          import os
+
+          def get(path):
+              with urlopen("http://127.0.0.1:8000" + path, timeout=5) as response:
+                  return response.status, json.loads(response.read().decode()) if response.headers.get_content_type() == "application/json" else response.read()
+
+          status, body = get("/health")
+          assert status == 200 and body == {"status": "ok"}
+          assert not Path("/data/screen-results.sqlite").exists()
+          with TemporaryFile(dir="/data") as probe:
+              probe.write(b"ok")
+          status, body = get("/advisory/status")
+          assert status == 200 and body == {"enabled": False, "mode": "disabled"}
+          request = Request("http://127.0.0.1:8000/advisory/evidence", data=b"{}", method="POST")
+          request.add_header("Content-Type", "application/json")
+          try:
+              urlopen(request, timeout=5)
+              raise AssertionError("disabled evidence did not return 503")
+          except HTTPError as error:
+              assert error.code == 503
+              payload = json.loads(error.read().decode())
+              assert payload["status"] == "DISABLED"
+              assert payload["reason_code"] == "RETRIEVAL_DISABLED"
+              assert payload["hits"] == []
+          page = urlopen("http://127.0.0.1:8000/", timeout=5).read().decode("utf-8")
+          assert "固定向量演示" in page and "语义质量尚未验证" in page
+          root = Path("/srv")
+          assert (root / "app/static/demo.html").is_file()
+          assert (root / "app/advisory.py").is_file()
+          assert (root / "data/synthetic/jobs/jobs.json").is_file()
+          assert sorted(path.name for path in root.rglob("*.pdf")) == [
+              "S001_normal_backend.pdf",
+              "S002_empty.pdf",
+          ]
+          for item in (".env", ".venv", ".git", "tests", "eval", "eval/reports"):
+              assert not (root / item).exists()
+          assert find_spec("pytest") is None
+          assert not Path("/srv/out/vector-index").exists()
+          provider = [key for key in os.environ if any(token in key.upper() for token in ("OPENAI", "DASHSCOPE", "DEEPSEEK", "EMBEDDING", "LLM_"))]
+          assert not provider
+          print("C01-C03: health/status/evidence/image isolation passed")
+          PY
+          result="$(docker compose -p "$project" -f compose.yaml exec -T api python - <<'PY'
+          from contextlib import closing
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+          import json
+          import sqlite3
+
+          endpoint = "http://127.0.0.1:8000/batches"
+          root = Path("/srv/data/synthetic/resumes")
+          names = ["S001_normal_backend.pdf", "S002_empty.pdf"]
+
+          def request(files):
+              boundary = "acceptance-c"
+              parts = []
+              for name, content in files:
+                  header = (
+                      f'--{boundary}\r\nContent-Disposition: form-data; name="files"; filename="{name}"\r\n'
+                      "Content-Type: application/pdf\r\n\r\n"
+                  )
+                  parts.extend((header.encode("ascii"), content, b"\r\n"))
+              body = b"".join(parts) + f"--{boundary}--\r\n".encode("ascii")
+              return Request(endpoint, data=body, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+
+          with urlopen(request([(name, (root / name).read_bytes()) for name in names]), timeout=10) as response:
+              assert response.status == 200
+              created = json.loads(response.read().decode())
+          with urlopen(f"{endpoint}/{created['batch_id']}", timeout=10) as response:
+              assert json.loads(response.read().decode()) == created
+          normal, empty = created["items"]
+          assert [item["source_name"] for item in created["items"]] == names
+          assert (normal["status"], normal["jd_id"], normal["tier"], normal["total"], normal["project_source"], normal["project"]) == (
+              "SCORED", "JD1", "B", 60, "mock", 0,
+          )
+          assert (empty["status"], empty["reason_code"], empty["total"], empty["tier"]) == ("REVIEW", "EMPTY", -1, None)
+          assert all(empty[key] is None for key in ("skill", "project", "years", "education", "bonus"))
+          try:
+              urlopen(request([("../invalid.pdf", b"")]), timeout=10)
+          except HTTPError as error:
+              with error:
+                  assert error.code == 422
+          else:
+              raise AssertionError("unsafe upload was accepted")
+          with closing(sqlite3.connect("/data/screen-results.sqlite")) as conn:
+              assert conn.execute("SELECT count(DISTINCT batch_id), count(*) FROM screen_results").fetchone() == (1, 2)
+          print(json.dumps(created, sort_keys=True, ensure_ascii=True))
+          PY
+          )"
+          batch_id="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["batch_id"])' "$result")"
+          test -n "$batch_id"
+          docker compose -p "$project" -f compose.yaml down
+          docker compose -p "$project" -f compose.yaml up -d --no-build --wait --wait-timeout 60
+          new_id="$(docker compose -p "$project" -f compose.yaml ps -q api)"
+          test -n "$new_id"
+          test "$old_id" != "$new_id"
+          test "$(docker inspect --format '{{.Image}}' "$new_id")" = "$image_id"
+          test "$(docker volume ls -q --filter "name=${project}_screen-data")" = "$volume_id"
+          after="$(docker compose -p "$project" -f compose.yaml exec -T api python - "$batch_id" <<'PY'
+          import json
+          import sys
+          from urllib.request import urlopen
+          with urlopen("http://127.0.0.1:8000/batches/" + sys.argv[1], timeout=10) as response:
+              assert response.status == 200
+              print(json.dumps(json.loads(response.read().decode()), sort_keys=True, ensure_ascii=True))
+          PY
+          )"
+          test "$after" = "$result"
+          python_ver="$(docker compose -p "$project" -f compose.yaml exec -T api python -c 'import sys; print(sys.version.split()[0])')"
+          echo "C04-C06: batch $batch_id persisted; container $old_id -> $new_id; image $image_id; volume $volume_id; python $python_ver; ostype $ostype"
+          python3 - <<PY
+          import json
+          print(json.dumps({
+            "C": "PASS",
+            "source": "$SOURCE_COMMIT",
+            "compose_project": "$project",
+            "ostype": "$ostype",
+            "batch_id": "$batch_id",
+            "container_before": "$old_id",
+            "container_after": "$new_id",
+            "image_id": "$image_id",
+            "volume_id": "$volume_id",
+            "python": "$python_ver",
+            "new_real_model_requests": 0,
+          }, indent=2, sort_keys=True))
+          PY
+          docker compose -p "$project" -f compose.yaml down
+          trap - EXIT
