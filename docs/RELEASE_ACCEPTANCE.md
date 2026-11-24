@@ -1,6 +1,6 @@
 # 干净安装、真实浏览器与目标容器验收方案
 
-状态（2026-11-24 最新）：A、B01 表断言及 B02–B09 相应分项沿用，不重做。B10 进程观察修复候选已获 [Cursor 7122599771 启动前补审](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122599771)，按用户新授权在新副本完成一次损坏/一次启动；原始进程快照保存且校验通过，随后 socket.bind 审计触发并在副作用前被拒绝，结果仍为 BLOCKED（12.3）。没有固定文案或自然 SystemExit 证据，不把清理后返回码1算作通过。两轮终止账本、损坏件、备份及旧现场均保留，当前无监听、不重试。整段 B/B10/C、Ready、合入未通过，冻结应用不变。
+状态（2026-11-24 最新）：A、B01 表断言及 B02–B09 相应分项沿用，不重做。B10 第三轮独立候选已取得预期失败证据 `EXPECTED_FAILURE_EVIDENCE_PENDING_REVIEW`（12.4）；前两轮 BLOCKED 现场保留。B 分项已收口，控制台零错误仍不成立。C 仍因本机 PATH 无 docker CLI 未执行，不自行安装 Docker/WSL。Ready、合入未授权。冻结应用仍 `3005819`。
 
 ## 1. 固定对象与现有证据
 
@@ -13,8 +13,8 @@
 | 阶段 | 目标与环境 | 通过口径 | 当前情况 |
 | --- | --- | --- | --- |
 | A | Windows x64、Python 3.9、新源码导出与新 venv | 安装、pip check、全量离线与 Mock | 初轮 FAIL 保留；新一轮 PASS：安装一次/零重试、check、731 passed、Mock 13/13、默认导入通过，结果已复审 |
-| B | A 的隔离环境、真实本机 Edge/Chrome、回环 HTTP | 默认与显式假向量两种启动模式的页面/网络/回归 | B01 表断言及 B02–B09 分项沿用；B10 首轮进程守卫阻断，修复新轮在 socket.bind 审计触发后停止，均 BLOCKED，缺固定自然退出证据；整段 B 未通过 |
-| C | Linux 容器、Docker Engine + Compose v2 | 当前默认镜像构建、禁用辅助服务、Mock 上传回查、保留卷重建 | 本机 PATH 未发现 docker CLI；不据此声称系统未安装 Docker |
+| B | A 的隔离环境、真实本机 Edge/Chrome、回环 HTTP | 默认与显式假向量两种启动模式的页面/网络/回归 | B01–B09 分项沿用；B10 第三轮已取得自然 SystemExit/1/固定文案，blocking 审计空、8000 无监听。前两轮 BLOCKED 保留。分项收口；控制台零错误仍不成立 |
+| C | Linux 容器、Docker Engine + Compose v2 | 当前默认镜像构建、禁用辅助服务、Mock 上传回查、保留卷重建 | 2026-11-24 Cursor 再查 PATH 仍无 docker CLI；不安装 Docker/WSL，不复用旧 CI。C 仍 NOT_RUN/环境 BLOCKED |
 
 三阶段分别记 PASS / FAIL / BLOCKED / NOT_RUN。C 的 Linux/Compose 成功不能写成 Windows Docker Desktop 通过；B 的宿主机假向量演示也不能写成容器已启用假向量服务。
 
@@ -99,7 +99,7 @@ B04 的边界请求通过真实浏览器同源 fetch 执行：默认模式只检
 
 网络证据只记录本任务页面发出的请求元数据：方法、同源路径、状态、耗时；不导出整个用户浏览器的 Cookie/HAR/本地存储。页面不应发跨源请求或任何 DeepSeek/百炼请求；没有控制台错误。保存默认禁用、默认评分、假向量证据、窄屏四类截图（只含合成数据）；不截终端环境变量或配置编辑器。
 
-本矩阵是完整 B 的通过标准，不是失败后的自动续跑授权。B01 保留第 10 节限定结论，B02–B08 已接受分项见 10.5–10.6；剩余 B09/B10 须按具体新方案及适用授权执行。不能用既往 APPROVED 恢复已结束轮次，也不能把分项通过写成整段 B 或控制台零错误通过。
+本矩阵是完整 B 的通过标准，不是失败后的自动续跑授权。B01 保留第 10 节限定结论，B02–B08 见 10.5–10.6，B09 见 11.2，B10 见 12.4。不能用既往 APPROVED 恢复已结束轮次，也不能把分项收口写成控制台零错误通过。C 不随 B 收口自动执行。
 
 ## 5. C：目标 Linux/Compose 默认镜像验收
 
@@ -378,7 +378,7 @@ Cursor 7121802341 确认原管理器对整棵树要求同一命令片段且在�
 
 该准备时点的新轮仍只允许一次新副本损坏、一次显式假入口尝试、60秒上限、无HTTP/真实模型/C/合入，异常即停；固定应用自然 SystemExit/1/固定提示、空网络凭证审计、无监听、无修复/新代、备份/原件/旧文件完整的原通过条件保持。准备与离线通过不代表故障路径通过；后续获审/授权的实际结果见12.3。
 
-### 12.3 B10 修复新轮被 socket.bind 审计阻断（2026-11-24，待结果复审）
+### 12.3 B10 修复新轮被 socket.bind 审计阻断（2026-11-24，结果已复核为 BLOCKED）
 
 执行 head `5861a1fcae5b70299081ab36e00a064ce2568b24`，冻结应用仍 `3005819`；[补审7122599771](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122599771)覆盖新目录 `manual-b10-repair-57ca535cdce147fb8c68bc0fe9a653a0` 与12个绑定SHA，执行前及收尾均匹配。用户本次明确授权后新写 approval，绑定该评论及一次新副本损坏/一次失败启动，SHA `a0fa42280974cefa5527430414fe168849d3f3c9df518b3b8a029a64e2f6e0a4`。没有复用旧轮额度或旧预审。
 
@@ -390,4 +390,16 @@ Cursor 7121802341 确认原管理器对整棵树要求同一命令片段且在�
 
 新损坏件20B，SHA `9dc527e81bb458c161ab29cb19e4be39e3643ca83e117ac6365326a7a2f97d6c`，inode字符串 `281474978040312`、注入后mtime_ns字符串 `1795497108481990600`在收尾相同，无新代、没有恢复。有效备份仍904B、inode `281474978040313`、mtime_ns `1795408681214819700`、SHA `d9fd41b9f21772a67bf2c8c715820e27d3f70231a6d2f034591e44b58296fc02`；原件/DB两行未变。实际逐文件核对11755旧文件/A286源码/A15证据/143新源码均changed=[]，首轮result/终止账本等锚点另重算一致。
 
-本轮原 `B10/result.json` SHA `3241a210b414a57ce388ac155803ee63f7a900c66fecf94aff404c7326bd2c41`；审计SHA `f92ee991bbf943190efb970ef67ff5adaa96391efd9a26e30c832f20f40b3c5b`；编号快照SHA `198240f35c7607b48cd64351050f7dafe206076d7c8a6cd39a3f72198d2dcb67`；追加 `execution-summary.json` SHA `cd7c65915c4983d6e72f5021f0d034ea7c0c158a578b6b1cc81f1228470a6519`。摘要不覆盖原result/审计/采样。准备时101项离线结果沿用，不重跑；本次仅一次真实故障尝试，已停止并送Cursor独立结果复审。B10/整段B未通过，C/Ready/合入未执行。
+本轮原 `B10/result.json` SHA `3241a210b414a57ce388ac155803ee63f7a900c66fecf94aff404c7326bd2c41`；审计SHA `f92ee991bbf943190efb970ef67ff5adaa96391efd9a26e30c832f20f40b3c5b`；编号快照SHA `198240f35c7607b48cd64351050f7dafe206076d7c8a6cd39a3f72198d2dcb67`；追加 `execution-summary.json` SHA `cd7c65915c4983d6e72f5021f0d034ea7c0c158a578b6b1cc81f1228470a6519`。摘要不覆盖原result/审计/采样。准备时101项离线结果沿用，不重跑；本轮额度已终止。独立结果复审见 [7122920785](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122920785)；后续第三轮见 12.4。本轮不算 B10 通过。
+
+### 12.4 B10 第三轮取得预期失败证据（2026-11-24）
+
+用户将执行端转为 Cursor，要求审核并完成 B10。先对 12.3 做独立核对 [7122920785](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122920785)：repair1 的 BLOCKED 成立，15 个证据 SHA 匹配，缺 `entry-exit.json` 与固定文案。只读诊断（未写该目录、未启动 8000、未发 HTTP）：同一 venv 解释器下 `from app.api import create_app` 即出现 `socket.bind`；随后 `prepare_demo_advisor()` 仍抛 `VectorIndexError INDEX_INVALID`。冻结 `advisory_demo.main` 会在 `uvicorn.run` 前把它转成 `Fixed fake-vector demo unavailable`。
+
+新独立目录 `out/acceptance/manual-b10-repair2-2631b343650d4e97ad82fff9d446fd9d/`，scope `B10-new-copy-corruption-single-attempt-repair2`，plan head 当时为 `de45ce971a53ffcf8eba5892020c68d936b353dd`。最小改动：`socket.bind` 只写入 `application-bind-notes.jsonl`（无地址、不抛错）；`socket.connect` / DNS / HTTP / `.env` 仍先记录后拒绝；8000 LISTENING 仍 BLOCKED。离线守卫 105/105 通过，`actual_service_starts=0`。[启动授权 7122946892](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122946892) 绑定 12 个执行文件 SHA。approval SHA `ce059083597bbb99682936736dd9808f0900f08c80fa8a8e31637e6674b97116`。
+
+北京时间 13:26:57.249 损坏、13:26:57.414 启动器 4180。snapshot 先于 validation；实际 Python 51032，`runtime_command_attested=true`，mode `CIM_RUNTIME_TARGET`。13:26:59.767 诊断文件一条 `socket.bind`；blocking audit 保持空。13:27:00.747 `entry-exit.json`：冻结 `advisory_demo.main` 第 36 行 `SystemExit`，文案 `Fixed fake-vector demo unavailable`，源码 SHA `5fc42e843f5e6f13381fd584c60e1ddffd8cd91a24f7f4ce31c734867c40a95e`。stderr 为该固定文案，stdout 0 字节，自然退出码 1。listener 14 条含 after-exit，全部空。13:27:12.247 收尾，`result.json` 为 `EXPECTED_FAILURE_EVIDENCE_PENDING_REVIEW`，`B=NOT_PASSED`（执行当时不自行写整段 B PASS），`C=NOT_AUTHORIZED`。
+
+损坏件仍 20B、SHA `9dc527e81bb458c161ab29cb19e4be39e3643ca83e117ac6365326a7a2f97d6c`，inode `281474978040495` 与损坏前同一文件。独立备份仍 904B `d9fd41b9f21772a67bf2c8c715820e27d3f70231a6d2f034591e44b58296fc02`。DB 仍 `e6ca9af908984cfc71c4a42cd701b89ca9b246da0610efdebb388255a44b104a`，两行合成数据未变。完整性 old 11939 / A 源码 286 / A 证据 15 / 冻结源码 143，`changed=[]`。首轮 result 仍 `390c2c36…`，repair1 result 仍 `3241a210…`。本轮 result SHA `f02340f06264a26fe1b9a4889cba92f6f87b43e7581b23912a7790d1aaff1947`；终止账本 SHA `307da1efafcb75211480afd36bebbe1d439ec8c2aaca668855bf42062cc1a617`；追加 summary SHA `3053818db136b757cc90a9ce610ef21d96f9b4bc88b2a5dcee3721d365c6ab94`。执行记录见 [7122976325](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122976325)。
+
+B10 条目达到设计通过态。A/B01–B09 不重做。文档收口分项 B，不宣称控制台零错误，不改冻结应用，不发真实模型请求。C 因本机无 docker CLI 仍未执行；Ready/合入仍须另行授权。
