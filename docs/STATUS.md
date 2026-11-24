@@ -42,7 +42,7 @@
 
 ## 待完成
 
-当前剩余（2026-11-24）：冻结 `3005819` 的 A/B/C 已合入 `8f9e42c` 并打标签 `v0.6-delivery-acceptance`。检索质量仍未过关：v1 与 held-out live 均为 Recall@1=8/9，HV005/RV005 同类错排，无拒绝阈值。真实 Embedding 仍未接入筛选 / FastAPI / Docker。Windows Docker Desktop 与控制台零错误为可选项。独立 CI [PR #41](https://github.com/yjy18312446491/agent_development/pull/41) 与 held-out [PR #42](https://github.com/yjy18312446491/agent_development/pull/42) 保持 Draft。以下为历史条目。
+当前剩余（2026-11-24）：冻结 `3005819` 的 A/B/C 已合入；[#42](https://github.com/yjy18312446491/agent_development/pull/42) / [#41](https://github.com/yjy18312446491/agent_development/pull/41) 已 Squash 合入 `1dca73c`、`f2c5812`。检索质量仍未过关（Recall@1=8/9）。默认筛选仍 Mock；`POST /batches?advisory=embedding` 为显式旁路，不改 `jd_id`/分数，不写入 SQLite，Docker 默认关闭。Windows Docker Desktop 仍可选未装。以下为历史条目。
 
 - 12 条独立中文合成查询及 36 条相关性标签已获得 [Cursor 更正补审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056976801)，假向量离线评测已通过 PR #33 合入 `d00a31e`。独立复审记录与评测前输入指纹已获 [#34 补审通过](https://github.com/yjy18312446491/agent_development/pull/34#issuecomment-7058205770)，经用户授权以 merge commit `cac1216` 合入 main，双亲 `d00a31e` / `18695bb`，树与审查 head 相同，保留原提交关系。原标签 JSON/SHA 和历史编写状态不变；APPROVED 只指标签复审，模型质量仍待验证，原锁保留。[评测规范](RETRIEVAL_EVAL.md)
 

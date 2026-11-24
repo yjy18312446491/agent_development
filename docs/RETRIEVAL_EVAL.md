@@ -171,7 +171,7 @@ PDF 抽取/闸门、确定性路由与五维评分、显式 DeepSeek、LangGraph
 | 里程碑 | 当前缺口 | 完成标准 |
 | --- | --- | --- |
 | 1. 检索质量复审与独立验证 | v1 与 held-out live 均为 Recall@1=8/9；HV005 与 RV005 同类错排；拒绝匹配未验证 | 保留原标签与 SHA；不得用这批调阈值；结果只是描述性，`quality_conclusion=NOT_ESTABLISHED` |
-| 2. 本地索引与辅助证据接线 | 假向量索引与本机辅助 API 已合入；真实 Embedding 仍未接入筛选 / FastAPI / Docker | 接线须单独方案：默认关闭，不改规则 `jd_id` 与五维评分；Docker 默认路径不读提供器配置 |
+| 2. 本地索引与辅助证据接线 | 假向量演示已合入；真实 Embedding 仅显式 `advisory=embedding` 旁路，Docker 默认仍关闭 | 默认 Mock；旁路不改规则 `jd_id` 与五维评分、不写入 SQLite；镜像不读提供器配置 |
 | 3. 最终整体验收和发布材料 | 冻结 `3005819` 的 A/B/C 已完成；接线后的新版本需重新验收 | 干净安装、真实浏览器分项、Linux Compose 与入口文档已对冻结应用归档；Windows Desktop 仍可选；版本标签按授权打在已验证 main |
 
 ## 独立验证样本与质量口径（held-out）

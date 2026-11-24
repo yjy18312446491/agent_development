@@ -152,6 +152,8 @@ curl.exe "http://127.0.0.1:8000/batches/$($batch.batch_id)"
 
 单次最多上传 10 份 PDF，每份最多 5 MiB，上传校验失败返回 `422`。同一批次文件名按大小写不敏感的方式查重。数据库默认保存在 `tmp/screen-results.sqlite`，可通过进程环境变量 `SCREEN_DB_PATH` 指定位置。上传原件在筛选结束后从临时目录清理。
 
+需要辅助向量证据时，显式使用 `POST /batches?advisory=embedding`。缺省请求不读 Embedding 配置；该旁路不改规则 `jd_id` 和五维分，也不写入 SQLite。配置缺失返回 `503 / 辅助检索未配置`。Docker 默认入口不启用。质量结论仍为未过关。
+
 本地 HTTP 仅在显式提交 `POST /batches?project_scorer=deepseek` 时读取模型配置并注入 DeepSeek v2 项目评分，配置失败返回固定的 `503 / 模型未配置`，其他评分参数值返回中文 `422`。每批最多「文件数 + 2」次请求、最多 2 次瞬时重试；HTTP 400–404 或 `REQUEST_LIMIT` 后，后续应调用模型的文件进入 `REVIEW / PROVIDER_STOPPED / -1`，空项目段和本地拦截继续按原规则处理。批次可按原接口回查。接口已通过假客户端验收和本机单样本真实联调，实测项目分 24、总分 84、A 档。Demo 与缺省 HTTP 请求使用 Mock。[HTTP 实测记录](eval/README.md#2026-11-19-本机-http-联调)
 
 ## Docker（可选）
