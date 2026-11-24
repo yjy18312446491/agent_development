@@ -3,12 +3,16 @@
 from io import BytesIO
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.error import URLError
 import urllib.request
 
+from fastapi.testclient import TestClient
 import pytest
 
 from app import api
-from app.embedding_client import EmbeddingClient, EmbeddingConfig, EmbeddingError
+from app.embedding_client import EmbeddingClient, EmbeddingConfig, EmbeddingError, MAX_TEXT_BYTES
+from app.extract import ExtractResult, extract_pdf
 from app.store import connect, fetch_batch
 
 
@@ -74,9 +78,6 @@ def client(local_api, monkeypatch):
 
 @pytest.fixture
 def local_api(tmp_path, monkeypatch):
-    from tempfile import TemporaryDirectory
-    from fastapi.testclient import TestClient
-
     db = tmp_path / "store" / "results.sqlite"
     uploads = tmp_path / "uploads"
     uploads.mkdir()
@@ -101,10 +102,12 @@ def test_default_batch_has_no_advisory_and_does_not_construct_client(local_api, 
     assert (data["items"][0]["jd_id"], data["items"][0]["total"]) == ("JD1", 60)
 
 
-def test_favicon_is_empty_and_does_not_create_a_database(local_api):
+def test_favicon_and_devtools_probe_are_empty_and_do_not_create_a_database(local_api):
     test_client, db = local_api
-    response = test_client.get("/favicon.ico")
-    assert response.status_code == 204 and response.content == b""
+    icon = test_client.get("/favicon.ico")
+    probe = test_client.get("/.well-known/appspecific/com.chrome.devtools.json")
+    assert icon.status_code == 204 and icon.content == b""
+    assert probe.status_code == 204 and probe.content == b""
     assert not db.exists()
 
 
@@ -150,3 +153,42 @@ def test_embedding_advisory_does_not_change_rule_scores(client):
     assert stored == data["items"]
     assert KEY not in response.text
     assert [call["parameters"]["text_type"] for call in http.calls] == ["document", "query"]
+
+
+def test_oversize_query_is_skipped_without_blocking_other_files(client, monkeypatch):
+    test_client, db, http = client
+    original = extract_pdf
+
+    def maybe_oversize(path):
+        if Path(path).name == S002:
+            return ExtractResult("x" * (MAX_TEXT_BYTES + 1), "OK")
+        return original(path)
+
+    monkeypatch.setattr("app.batch_advisory.extract_pdf", maybe_oversize)
+    response = test_client.post("/batches?advisory=embedding", files=[_file(S001), _file(S002)])
+    data = response.json()
+    assert (data["items"][0]["jd_id"], data["items"][0]["total"]) == ("JD1", 60)
+    assert (data["items"][1]["status"], data["items"][1]["reason_code"]) == ("REVIEW", "EMPTY")
+    first, second = data["advisory"]["items"]
+    assert first["hits"][0]["reference_jd_id"] == "JD3"
+    assert second == {"source_name": S002, "status": "REVIEW", "reason_code": "INPUT_LIMIT", "hits": []}
+    assert [len(call["input"]["texts"]) for call in http.calls] == [3, 1]
+
+
+def test_embedding_transport_error_still_persists_rule_scores(client, monkeypatch):
+    test_client, db, http = client
+
+    def fail(request, timeout):
+        raise URLError("synthetic-transport")
+
+    monkeypatch.setattr(http, "open", fail)
+    response = test_client.post("/batches?advisory=embedding", files=[_file(S001)])
+    data = response.json()
+    assert (data["items"][0]["jd_id"], data["items"][0]["total"]) == ("JD1", 60)
+    item = data["advisory"]["items"][0]
+    assert item["status"] == "REVIEW" and item["reason_code"] == "TRANSPORT_ERROR" and item["hits"] == []
+    fetched = test_client.get("/batches/" + data["batch_id"]).json()
+    assert "advisory" not in fetched
+    with connect(db) as conn:
+        assert fetch_batch(conn, data["batch_id"]) == data["items"]
+    assert KEY not in response.text

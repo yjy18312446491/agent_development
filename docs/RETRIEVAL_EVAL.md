@@ -1,6 +1,6 @@
 # 独立相关性标注与检索基线评测
 
-本规范记录独立合成查询、已复审相关性标注、默认关闭的假向量评测及受控真实检索基线。`eval.run_retrieval_eval` 仍仅支持离线假向量；另一个独立入口 `eval.run_retrieval_baseline` 已按授权完成一轮真实基线，结果见文末。检索仍未接入筛选或 HTTP 服务。
+本规范记录独立合成查询、已复审相关性标注、默认关闭的假向量评测及受控真实检索基线。`eval.run_retrieval_eval` 仍仅支持离线假向量；另一个独立入口 `eval.run_retrieval_baseline` 已按授权完成一轮真实基线，结果见文末。检索仍不进入筛选图或 Docker 默认路径；HTTP 仅显式 `advisory=embedding` 旁路。
 
 ## 数据与标注来源
 
@@ -187,7 +187,7 @@ PDF 抽取/闸门、确定性路由与五维评分、显式 DeepSeek、LangGraph
 - 仅 3 个岗位时 Recall@3 饱和，不能当门槛。
 - **不得**在 v1 或 held-out 上拟合相似度阈值。
 - fake Recall@1=6/9、Recall@3=9/9 只验证计算程序（HV002/HV005/HV008 故意错排）。
-- 筛选、FastAPI、Docker 默认路径仍不接入真实 Embedding。
+- 筛选图与 Docker 默认路径仍不接入真实 Embedding；HTTP 仅显式 `advisory=embedding` 旁路，超 2048 UTF-8 字节的查询单条 `INPUT_LIMIT`，不改规则分。
 
 ### 2026-11-24 真实 held-out 15 向量
 

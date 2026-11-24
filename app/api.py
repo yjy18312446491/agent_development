@@ -174,6 +174,11 @@ def favicon() -> Response:
     return Response(status_code=204)
 
 
+@router.get("/.well-known/appspecific/com.chrome.devtools.json", include_in_schema=False)
+def chrome_devtools_probe() -> Response:
+    return Response(status_code=204)
+
+
 @router.post(
     "/batches",
     openapi_extra={"requestBody": {"required": True, "content": {"multipart/form-data": {
