@@ -121,8 +121,8 @@
 ## 当前状态基线
 
 - Coze 版主体可演示，包含工作流、知识库、异常分支和数据表设计。
-- Python 版已有离线代码、规则测试和 Mock 评测，但真实 LLM、FastAPI、真正向量检索、Docker 和公开 Demo 仍需完成。
-- 未来简历和面试材料只能按上述状态表述。
+- Python 版可演示：抽取、闸门、确定性路由、五维评分（默认 Mock 项目分）、LangGraph、SQLite/CSV、FastAPI/Demo、Linux Compose。真实 DeepSeek 与 Embedding 均为显式入口；检索质量未过关（Recall@1=8/9），不接入筛选图，Docker 默认不读提供器配置。
+- 未来简历和面试材料只能按上述状态表述，不得把 Mock 或 8/9 Recall 写成真实招聘效果。
 
 ## 相关背景文件
 
