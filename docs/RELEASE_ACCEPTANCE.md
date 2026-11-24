@@ -1,6 +1,6 @@
 # 干净安装、真实浏览器与目标容器验收方案
 
-状态（2026-11-24 最新）：A、B01 表断言及 B02–B09 相应分项沿用，不重做。B10 第三轮独立候选已取得预期失败证据 `EXPECTED_FAILURE_EVIDENCE_PENDING_REVIEW`（12.4）；前两轮 BLOCKED 现场保留。B 分项已收口，控制台零错误仍不成立。C 仍因本机 PATH 无 docker CLI 未执行，不自行安装 Docker/WSL。Ready、合入未授权。冻结应用仍 `3005819`。
+状态（2026-11-24 最新）：A、B01 表断言及 B02–B09 相应分项沿用，不重做。B10 第三轮已取得预期失败证据（12.4）。C 已在 GitHub `ubuntu-24.04` 对冻结源码 `3005819` 跑通 C01–C06（13）；本机未安装 Docker/WSL，Linux 通过不等于 Windows Docker Desktop。B 分项收口，控制台零错误仍不成立。Ready、合入未授权。冻结应用仍 `3005819`。
 
 ## 1. 固定对象与现有证据
 
@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | A | Windows x64、Python 3.9、新源码导出与新 venv | 安装、pip check、全量离线与 Mock | 初轮 FAIL 保留；新一轮 PASS：安装一次/零重试、check、731 passed、Mock 13/13、默认导入通过，结果已复审 |
 | B | A 的隔离环境、真实本机 Edge/Chrome、回环 HTTP | 默认与显式假向量两种启动模式的页面/网络/回归 | B01–B09 分项沿用；B10 第三轮已取得自然 SystemExit/1/固定文案，blocking 审计空、8000 无监听。前两轮 BLOCKED 保留。分项收口；控制台零错误仍不成立 |
-| C | Linux 容器、Docker Engine + Compose v2 | 当前默认镜像构建、禁用辅助服务、Mock 上传回查、保留卷重建 | 2026-11-24 Cursor 再查 PATH 仍无 docker CLI；不安装 Docker/WSL，不复用旧 CI。C 仍 NOT_RUN/环境 BLOCKED |
+| C | Linux 容器、Docker Engine + Compose v2 | 当前默认镜像构建、禁用辅助服务、Mock 上传回查、保留卷重建 | GitHub ubuntu-24.04 PASS（13）：Engine 28.0.4 / Compose v2.38.2，S001=JD1/B/60/mock，S002=REVIEW/EMPTY/-1，保留卷重建。本机无 docker CLI，未安装 Desktop；不等于 Windows Desktop 通过 |
 
 三阶段分别记 PASS / FAIL / BLOCKED / NOT_RUN。C 的 Linux/Compose 成功不能写成 Windows Docker Desktop 通过；B 的宿主机假向量演示也不能写成容器已启用假向量服务。
 
@@ -402,4 +402,21 @@ Cursor 7121802341 确认原管理器对整棵树要求同一命令片段且在�
 
 损坏件仍 20B、SHA `9dc527e81bb458c161ab29cb19e4be39e3643ca83e117ac6365326a7a2f97d6c`，inode `281474978040495` 与损坏前同一文件。独立备份仍 904B `d9fd41b9f21772a67bf2c8c715820e27d3f70231a6d2f034591e44b58296fc02`。DB 仍 `e6ca9af908984cfc71c4a42cd701b89ca9b246da0610efdebb388255a44b104a`，两行合成数据未变。完整性 old 11939 / A 源码 286 / A 证据 15 / 冻结源码 143，`changed=[]`。首轮 result 仍 `390c2c36…`，repair1 result 仍 `3241a210…`。本轮 result SHA `f02340f06264a26fe1b9a4889cba92f6f87b43e7581b23912a7790d1aaff1947`；终止账本 SHA `307da1efafcb75211480afd36bebbe1d439ec8c2aaca668855bf42062cc1a617`；追加 summary SHA `3053818db136b757cc90a9ce610ef21d96f9b4bc88b2a5dcee3721d365c6ab94`。执行记录见 [7122976325](https://github.com/yjy18312446491/agent_development/pull/40#issuecomment-7122976325)。
 
-B10 条目达到设计通过态。A/B01–B09 不重做。文档收口分项 B，不宣称控制台零错误，不改冻结应用，不发真实模型请求。C 因本机无 docker CLI 仍未执行；Ready/合入仍须另行授权。
+B10 条目达到设计通过态。A/B01–B09 不重做。文档收口分项 B，不宣称控制台零错误，不改冻结应用，不发真实模型请求。C 见第 13 节；Ready/合入仍须另行授权。
+
+## 13. C Linux/Compose 实际结果（2026-11-24）
+
+本机 PATH 仍无 docker CLI，按方案不安装 Docker/WSL，也不复用旧固定 SHA 的 `ci/langgraph-runtime-verification` 结果。用户授权完成后，在独立分支 `ci/acceptance-c-3005819` / [Draft PR #41](https://github.com/yjy18312446491/agent_development/pull/41) 增加只读工作流：`git fetch` 冻结应用 `300581980ef2f1da4e9a7d96ecc62aea79bd7b9c`，在 GitHub 公共 `ubuntu-24.04` 运行器执行 C01–C06。该 CI 分支不合入本验收文档 PR，也不改 Codex 既有 CI 分支。
+
+[运行 45336976003 success](https://github.com/yjy18312446491/agent_development/actions/runs/45336976003)。Engine `28.0.4`，Compose `v2.38.2`，ostype `linux`，镜像内 Python `3.9.25`。基础镜像仍为 `python:3.9.25-slim-bookworm@sha256:a02e9c5406c416c504d6c9a1a306ff4080c3173f1008d192f953bd20382a2d5c`。`--pull --no-cache` 构建，无宿主机端口，未启动 `advisory_demo`，真实模型请求 0。
+
+| 编号 | 结果 |
+| --- | --- |
+| C01 | 新镜像 healthy，UID 1000，`/data` 可写，首次 health 200 且未建库，`pip check` 通过 |
+| C02 | 含 `demo.html`、advisory、jobs、仅 S001/S002 PDF；无 `.env`/`.git`/venv/`tests`/`eval`；pytest 未安装 |
+| C03 | `/advisory/status` 200 `disabled`；`/advisory/evidence` 503 空 hits；页面含「固定向量演示 / 语义质量尚未验证」；无向量索引、无提供器环境项 |
+| C04 | 批次 `06ceecfb4a0b4fe985f4ab2dc79e7ee8`：S001=`SCORED/JD1/B/60/mock/project 0`，S002=`REVIEW/EMPTY/-1`；GET 与 POST 一致；非法上传 422，库中仍 1 批 2 行 |
+| C05 | 容器 `b48cd652…` → `4e4a0680…`；镜像 `sha256:abbfff34337a049309b00fa6c8f851f2685bebd5ff5644e49b917f18f4f26875` 与卷 `accept45336976003_screen-data` 不变；同批次 GET 一致 |
+| C06 | compose 无 ports、非 privileged、非 host network |
+
+compose 项目 `accept45336976003`。标准公共仓库运行器按 GitHub 计费说明免费。Windows Docker Desktop 仍未验收，不能把本轮 Linux 结果写成 Desktop 通过。Ready/合入仍须另行授权。
