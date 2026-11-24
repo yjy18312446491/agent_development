@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-- 检索质量独立验证、真实 Embedding 接线与 Windows Docker Desktop 仍未做。
+- 新增与 v1 不相交的 12 条 held-out 检索查询及离线假向量入口；标签待独立复审，未跑 live，未接线。
+- 真实 Embedding 接线与 Windows Docker Desktop 仍未做。
 
 ## [v0.6-delivery-acceptance]
 
