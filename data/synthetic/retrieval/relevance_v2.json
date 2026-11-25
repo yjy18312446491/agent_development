@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "dataset_id": "retrieval-relevance-v2",
+  "annotation_status": "draft_pending_independent_review",
+  "annotation_source": "Cursor authored these retrieval-only extra jobs and queries after v1 and held-out were frozen. They are not derived from prior rankings or live vectors. Screening still uses only JD1-JD3. Independent review is pending. Do not retune old labels or thresholds.",
+  "relevance_threshold": 2,
+  "rubric": {
+    "0": "无岗位职责或技能证据，不相关；无关查询允许全部岗位均为 0。",
+    "1": "有可迁移的部分技能，但核心技术、职责或经验条件存在明确缺口。",
+    "2": "原文提供与岗位核心技术、职责及经验条件相符的具体证据。"
+  },
+  "jobs": [
+    {
+      "jd_id": "JD1",
+      "title": "后端开发工程师（中级）",
+      "min_years": 3.0,
+      "max_years": null,
+      "skills": ["Python", "FastAPI", "MySQL", "Redis"],
+      "bonus_skills": ["Docker", "Linux"],
+      "raw_text": "岗位：后端开发工程师（中级）\n要求：Python、FastAPI、MySQL、Redis，三年以上后端开发经验。"
+    },
+    {
+      "jd_id": "JD2",
+      "title": "后端开发工程师（初级）",
+      "min_years": 0.0,
+      "max_years": 2.5,
+      "skills": ["Python", "Flask", "MySQL"],
+      "bonus_skills": ["Git", "Docker"],
+      "raw_text": "岗位：后端开发工程师（初级）\n要求：Python、Flask、MySQL，接受应届生和项目经验。"
+    },
+    {
+      "jd_id": "JD3",
+      "title": "前端开发工程师",
+      "min_years": 1.0,
+      "max_years": null,
+      "skills": ["JavaScript", "TypeScript", "Vue", "React"],
+      "bonus_skills": ["Git"],
+      "raw_text": "岗位：前端开发工程师\n要求：JavaScript、TypeScript、Vue、React，具备页面开发经验。"
+    },
+    {
+      "jd_id": "JD4",
+      "title": "后端开发工程师（Java）",
+      "min_years": 3.0,
+      "max_years": null,
+      "skills": ["Java", "Spring", "MySQL"],
+      "bonus_skills": ["Redis", "Docker"],
+      "raw_text": "岗位：后端开发工程师（Java）\n要求：Java、Spring、MySQL，三年以上后端开发经验。"
+    },
+    {
+      "jd_id": "JD5",
+      "title": "数据开发工程师",
+      "min_years": 2.0,
+      "max_years": null,
+      "skills": ["Python", "Spark", "Hive"],
+      "bonus_skills": ["Airflow", "SQL"],
+      "raw_text": "岗位：数据开发工程师\n要求：Python、Spark、Hive，两年以上数仓或 ETL 经验。"
+    },
+    {
+      "jd_id": "JD6",
+      "title": "Android 开发工程师",
+      "min_years": 1.0,
+      "max_years": null,
+      "skills": ["Kotlin", "Java", "Android"],
+      "bonus_skills": ["Git", "Jetpack"],
+      "raw_text": "岗位：Android 开发工程师\n要求：Kotlin、Java、Android，具备一年以上移动端开发经验。"
+    }
+  ],
+  "cases": [
+    {
+      "id": "QV001",
+      "coverage_group": "JD1",
+      "query": "五年票务库存后端，使用 Python 与 FastAPI 提供预占接口，MySQL 保存座位，Redis 锁定库存。我负责超卖防护和超时释放，并用 Docker 在 Linux 发布。",
+      "relevance": {"JD1": 2, "JD2": 1, "JD3": 0, "JD4": 0, "JD5": 1, "JD6": 0},
+      "rationale": {
+        "JD1": "五年经验及 Python、FastAPI、MySQL、Redis 的具体接口任务符合中级要求。",
+        "JD2": "Python 与 MySQL 可迁移，但没有 Flask，且五年超过初级年限上限。",
+        "JD3": "没有页面框架或前端语言证据。",
+        "JD4": "没有 Java 或 Spring 实现证据。",
+        "JD5": "有 Python，但不是 Spark、Hive 或数仓 ETL 任务。",
+        "JD6": "没有 Kotlin、Android 或移动端证据。"
+      }
+    },
+    {
+      "id": "QV002",
+      "coverage_group": "JD1",
+      "query": "三年半内容审核服务，技术栈为 Python、FastAPI、MySQL 和 Redis。本人实现审核队列、幂等回写和缓存失效，不负责浏览器页面。",
+      "relevance": {"JD1": 2, "JD2": 1, "JD3": 0, "JD4": 0, "JD5": 1, "JD6": 0},
+      "rationale": {
+        "JD1": "年限超过三年，四项中级后端技术均有具体队列与缓存证据。",
+        "JD2": "有 Python、MySQL，缺少 Flask 且年限超出初级配置。",
+        "JD3": "明确不负责页面。",
+        "JD4": "无 Java Spring 证据。",
+        "JD5": "Python 可迁移，核心是在线服务不是数仓。",
+        "JD6": "无移动端证据。"
+      }
+    },
+    {
+      "id": "QV003",
+      "coverage_group": "JD2",
+      "query": "应届毕业生，无全职年限。毕业设计用 Python、Flask 和 MySQL 做实验室仪器预约，实现登记、查询和归还接口，使用 Git。未使用 FastAPI、Redis，也没有写过前端页面。",
+      "relevance": {"JD1": 1, "JD2": 2, "JD3": 0, "JD4": 0, "JD5": 1, "JD6": 0},
+      "rationale": {
+        "JD1": "有 Python、MySQL，缺少 FastAPI、Redis 与三年经验。",
+        "JD2": "接受应届项目经验，Flask、Python、MySQL 及接口任务齐全。",
+        "JD3": "没有前端语言或页面框架证据。",
+        "JD4": "没有 Java Spring。",
+        "JD5": "有 Python，但无 Spark、Hive 或数仓任务。",
+        "JD6": "没有 Android 开发证据。"
+      }
+    },
+    {
+      "id": "QV004",
+      "coverage_group": "JD2",
+      "query": "一年会议室预定实习，使用 Python、Flask 与 MySQL 完成时段占用和取消接口，Git 协作。目前没有 Redis 或 FastAPI，也不做页面样式。",
+      "relevance": {"JD1": 1, "JD2": 2, "JD3": 0, "JD4": 0, "JD5": 1, "JD6": 0},
+      "rationale": {
+        "JD1": "后端技能部分相关，中级框架、缓存与年限不足。",
+        "JD2": "一年在初级范围内，Flask 与 MySQL 接口任务匹配。",
+        "JD3": "不做页面。",
+        "JD4": "无 Java Spring。",
+        "JD5": "有 Python，无 Spark Hive。",
+        "JD6": "无移动端。"
+      }
+    },
+    {
+      "id": "QV005",
+      "coverage_group": "JD3",
+      "query": "两年营销落地页开发，使用 JavaScript、TypeScript、Vue 和 React 完成表单校验、滚动动效和路由切换，Git 协作。不负责 Python 服务或数据库表设计。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 2, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "没有 Python、FastAPI、MySQL、Redis 实现证据。",
+        "JD2": "没有 Flask 或 MySQL 程序开发证据。",
+        "JD3": "经验超过一年，四项前端技术与页面职责匹配。",
+        "JD4": "没有 Java Spring 后端证据。",
+        "JD5": "没有数仓或 Spark 证据。",
+        "JD6": "网页落地页不是 Android 应用。"
+      }
+    },
+    {
+      "id": "QV006",
+      "coverage_group": "JD3",
+      "query": "一年半电商详情页开发，使用 JavaScript、TypeScript、Vue 与 React 实现 SKU 切换、图片预览和购买按钮状态，Git 审查代码。从未编写服务端接口。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 2, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "明确没有服务端与数据库实践。",
+        "JD2": "没有初级后端语言与框架证据。",
+        "JD3": "一年半页面开发与四项前端技术符合要求。",
+        "JD4": "无 Java 后端。",
+        "JD5": "无数仓。",
+        "JD6": "不是移动原生应用。"
+      }
+    },
+    {
+      "id": "QV007",
+      "coverage_group": "JD4",
+      "query": "四年电力工单后端，使用 Java 与 Spring 提供派单接口，MySQL 保存工单状态，Redis 缓存当前处理人。我负责事务回滚和幂等提交。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 2, "JD5": 0, "JD6": 1},
+      "rationale": {
+        "JD1": "没有 Python 或 FastAPI 证据。",
+        "JD2": "没有 Flask 或 Python 项目。",
+        "JD3": "没有页面开发。",
+        "JD4": "四年 Java、Spring、MySQL 及后端事务符合该岗位。",
+        "JD5": "不是 Spark 数仓任务。",
+        "JD6": "有 Java，但核心是服务端工单不是 Android 客户端。"
+      }
+    },
+    {
+      "id": "QV008",
+      "coverage_group": "JD4",
+      "query": "三年半权限中心开发，技术栈为 Java、Spring 和 MySQL。本人实现角色授权接口、菜单树查询和登录会话，不写前端页面。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 2, "JD5": 0, "JD6": 1},
+      "rationale": {
+        "JD1": "无 Python FastAPI。",
+        "JD2": "无 Flask。",
+        "JD3": "不写前端页面。",
+        "JD4": "年限与 Java Spring MySQL 权限接口匹配。",
+        "JD5": "无数仓。",
+        "JD6": "Java 可迁移，缺 Android 与 Kotlin 客户端证据。"
+      }
+    },
+    {
+      "id": "QV009",
+      "coverage_group": "JD5",
+      "query": "三年用户行为数仓，使用 Python、Spark 和 Hive 构建日增明细与主题表，Airflow 调度回补。我负责分区设计和迟到数据重算。",
+      "relevance": {"JD1": 1, "JD2": 1, "JD3": 0, "JD4": 0, "JD5": 2, "JD6": 0},
+      "rationale": {
+        "JD1": "有 Python，但没有 FastAPI 在线接口与 Redis 缓存任务。",
+        "JD2": "有 Python，没有 Flask 业务接口。",
+        "JD3": "没有页面开发。",
+        "JD4": "没有 Java Spring。",
+        "JD5": "三年 Spark Hive 数仓与调度符合要求。",
+        "JD6": "没有移动端。"
+      }
+    },
+    {
+      "id": "QV010",
+      "coverage_group": "JD5",
+      "query": "两年订单宽表 ETL，使用 Python、Spark、Hive 做多表关联和迟到分区，Airflow 定时跑批。不维护对外 HTTP 服务。",
+      "relevance": {"JD1": 1, "JD2": 1, "JD3": 0, "JD4": 0, "JD5": 2, "JD6": 0},
+      "rationale": {
+        "JD1": "Python 可迁移，缺 FastAPI 与在线缓存。",
+        "JD2": "不是 Flask 接口项目。",
+        "JD3": "无前端。",
+        "JD4": "无 Java Spring。",
+        "JD5": "两年 ETL 与 Spark Hive 匹配。",
+        "JD6": "无 Android。"
+      }
+    },
+    {
+      "id": "QV011",
+      "coverage_group": "JD6",
+      "query": "三年外卖骑手端，使用 Kotlin 与 Java 开发 Android 客户端，完成接单列表、定位权限和后台保活，Git 发版。不写服务端接口。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 1, "JD5": 0, "JD6": 2},
+      "rationale": {
+        "JD1": "没有 Python 后端证据。",
+        "JD2": "没有 Flask。",
+        "JD3": "原生 Android 不是 Vue React 页面。",
+        "JD4": "有 Java，但任务是客户端不是 Spring 服务。",
+        "JD5": "无数仓。",
+        "JD6": "三年 Kotlin Java Android 客户端符合要求。"
+      }
+    },
+    {
+      "id": "QV012",
+      "coverage_group": "JD6",
+      "query": "两年记账应用，使用 Kotlin、Java 和 Android 实现账单列表、通知栏和本地数据库，Jetpack 导航。后端接口由其他同事提供。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 1, "JD5": 0, "JD6": 2},
+      "rationale": {
+        "JD1": "无 Python FastAPI。",
+        "JD2": "无 Flask。",
+        "JD3": "不是浏览器页面。",
+        "JD4": "使用他人接口不等于 Spring 后端。",
+        "JD5": "本地数据库不是 Hive 数仓。",
+        "JD6": "两年 Android 应用与 Kotlin Java 匹配。"
+      }
+    },
+    {
+      "id": "QV013",
+      "coverage_group": "none",
+      "query": "口腔诊所前台，负责挂号、排班和收费确认，使用办公软件登记患者。没有编写程序、接口或移动应用的经历。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "前台排班不是后端工程证据。",
+        "JD2": "没有 Python Flask 实践。",
+        "JD3": "没有前端技术。",
+        "JD4": "没有 Java Spring。",
+        "JD5": "没有数仓。",
+        "JD6": "没有 Android 开发。"
+      }
+    },
+    {
+      "id": "QV014",
+      "coverage_group": "none",
+      "query": "社区团购团长，对接小区供应商和配送时间，使用即时通讯拉群。未学习编程语言，也没有做过网页或数据库开发。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "拉群对接不是接口开发。",
+        "JD2": "无 Flask。",
+        "JD3": "无页面框架。",
+        "JD4": "无 Java。",
+        "JD5": "无 Spark。",
+        "JD6": "无 Android。"
+      }
+    },
+    {
+      "id": "QV015",
+      "coverage_group": "none",
+      "query": "高中体育老师，负责课间训练和运动会编排，使用电子表格记录成绩。没有程序、接口或网站作品。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "教学编排不是后端证据。",
+        "JD2": "无初级后端任务。",
+        "JD3": "电子表格不是前端页面。",
+        "JD4": "无 Java。",
+        "JD5": "成绩表不是数仓。",
+        "JD6": "无移动端开发。"
+      }
+    },
+    {
+      "id": "QV016",
+      "coverage_group": "none",
+      "query": "酒店客房清扫领班，按房态表分派打扫并检查布草。未学习编程，也没有接口或 App 练习作品。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "房态分派不是后端开发。",
+        "JD2": "无 Flask。",
+        "JD3": "无前端。",
+        "JD4": "无 Spring。",
+        "JD5": "无数仓。",
+        "JD6": "无 Android。"
+      }
+    },
+    {
+      "id": "QV017",
+      "coverage_group": "none",
+      "query": "宠物店美容师，按预约给猫狗洗澡造型，使用收银软件结账。没有编写程序或网页的经历。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "收银软件使用不是接口开发。",
+        "JD2": "无 Python 项目。",
+        "JD3": "无页面开发。",
+        "JD4": "无 Java。",
+        "JD5": "无 ETL。",
+        "JD6": "无 App 开发。"
+      }
+    },
+    {
+      "id": "QV018",
+      "coverage_group": "none",
+      "query": "房产中介，带客户看房并填写纸质意向书。计划转行软件，但尚未完成任何编程课程。",
+      "relevance": {"JD1": 0, "JD2": 0, "JD3": 0, "JD4": 0, "JD5": 0, "JD6": 0},
+      "rationale": {
+        "JD1": "转行意向不是中级后端证据。",
+        "JD2": "没有 Flask 项目。",
+        "JD3": "没有前端作品。",
+        "JD4": "没有 Java 项目。",
+        "JD5": "没有数仓作品。",
+        "JD6": "没有 Android 作品。"
+      }
+    }
+  ]
+}

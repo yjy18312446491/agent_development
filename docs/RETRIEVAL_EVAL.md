@@ -201,7 +201,36 @@ PDF 抽取/闸门、确定性路由与五维评分、显式 DeepSeek、LangGraph
 
 状态 `SUCCESS`、3 HTTP、0 重试，用量 608 token，估算 ¥0.000304，预留 ¥0.06144，授权预算 ¥0.10，账单未核验。Recall@1=8/9、Recall@3=9/9（分母 9 条有相关岗位查询）。唯一 top-1 分差为 HV005：标注 JD2 相关，模型将 JD1 排在第一。3 条无相关查询 Recall 为 null，其 top-1 不算拒绝成功。`quality_conclusion=NOT_ESTABLISHED`。v1 SHA `704ff394…` 与 held-out SHA `e1d0b0be…` 未改。报告 `retrieval-heldout-live-59dc7cfd….json` SHA `0ecfaffb…`，新锁 SHA `5a89f947…`，不提交。
 
-Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 Embedding 接线版本的容器验收。更多独立合成项目样本与 DeepSeek 质量验证不阻塞当前可演示交付，须另开样本与预算。当前预算仅覆盖已经结束的本轮，后续不自动发请求、开新轮或更改评分。
+Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 Embedding 接线版本的容器验收。更多独立合成项目样本与 DeepSeek 质量验证不阻塞当前可演示交付，须另开样本与预算。held-out 本轮已结束，不重跑。
+
+## 2026-11-24 检索质量 v2（已授权 live）
+
+用户同意新一轮、不重跑旧实验，并另说「允许运行」。本轮**不改**筛选 `jobs.json`、v1、held-out 金标或阈值。
+
+| 项 | 值 |
+| --- | --- |
+| 评测岗位 | JD1–JD3 原文与筛选相同；JD4 Java/Spring、JD5 Spark/Hive、JD6 Android 仅存在于评测 JSON |
+| 查询 | QV001–QV018，与 RV/HV 文本不相交；每岗 2 条相关 + 6 条无关 |
+| 向量 / HTTP | 6 document + 18 query = 24；批次 6/10/8；最多 3 HTTP、0 重试 |
+| 预算 | ¥0.10；按 24×8192 token 预留 ¥0.098304 |
+| 锁 | 新 `retrieval-quality-v2-live.lock`；旧三把锁不删不改 |
+| 标签 | 起草方 Cursor，`PENDING_INDEPENDENT_REVIEW` |
+| 入口 | `eval.run_retrieval_v2` 默认/假向量；`--live` 拒绝。`eval.run_retrieval_v2_live` 显式 live |
+
+假向量只测程序：故意让 QV002/QV004/QV010 错排第一，Recall@1=9/12、Recall@3=12/12。
+
+### 2026-11-24 真实 v2 24 向量
+
+执行源码 `22ed1d1`。SUCCESS，3 HTTP、0 重试。旧 `embedding-live.lock` `8fca5a11…`、`retrieval-relevance-v1-live.lock` `7340d61c…`、`retrieval-heldout-v1-live.lock` `5a89f947…` 字节未变。S001 仍 JD1/60。账单未核验。锁保留，不重跑。
+
+| 批次 | 角色 / 数量 | HTTP | 返回 token | 延迟 ms | 估算费用 ¥ |
+| --- | --- | --- | --- | --- | --- |
+| 1 | document 6 | 200 | 154 | 520 | 0.000077 |
+| 2 | query 10 | 200 | 429 | 1517 | 0.0002145 |
+| 3 | query 8 | 200 | 254 | 2034 | 0.000127 |
+| 合计 | 24 向量 | 3 次尝试，0 重试 | 837 | 4071（请求延迟之和） | 0.0004185 |
+
+预留 ¥0.098304，授权预算 ¥0.10。Recall@1=11/12、Recall@3=12/12（分母 12 条有相关岗位查询）。唯一 top-1 分差为 QV004：标注 JD2，模型 JD1（0.540764）略高于 JD2（0.538240），与 v1/held-out 的初级后端错排同类。6 条无关查询 Recall 为 null，其 top-1 不算拒绝成功。`quality_conclusion=NOT_ESTABLISHED`。报告 `retrieval-v2-live-26e43ac6….json` SHA `c04db3dc…`，新锁 SHA `79456a88…`，不提交。
 
 ### 2026-11-24 HV 标签复核（起草方，用户授权）
 

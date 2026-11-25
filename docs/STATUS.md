@@ -42,7 +42,7 @@
 
 ## 待完成
 
-当前剩余（2026-11-24）：可演示交付已按限制收口。冻结 `3005819` 的 A/B/C、[#41](https://github.com/yjy18312446491/agent_development/pull/41)/[#42](https://github.com/yjy18312446491/agent_development/pull/42)/[#43](https://github.com/yjy18312446491/agent_development/pull/43) 均已合入。检索质量未过关（Recall@1=8/9）是已知限制，不是待修指标；HV 36 条标签经用户授权由起草方复核后全部维持，数据仍为 `PENDING_INDEPENDENT_REVIEW`，未冒充第二双眼睛。默认筛选 Mock；Embedding 仅显式 `advisory=embedding`。Windows Docker Desktop、新的真实 Embedding、扩样本 DeepSeek 均须另授。以下为历史条目。
+当前剩余（2026-11-24）：可演示交付已按限制收口。检索质量 v2 已按授权 live：24 向量、3 HTTP、0 重试，估算 ¥0.0004185 / 预算 ¥0.10，Recall@1=11/12（QV004 错排），质量仍未过关。标签待独立审查。旧锁未改。筛选仍只用 JD1–JD3。以下为历史条目。
 
 - 12 条独立中文合成查询及 36 条相关性标签已获得 [Cursor 更正补审 APPROVED](https://github.com/yjy18312446491/agent_development/pull/33#issuecomment-7056976801)，假向量离线评测已通过 PR #33 合入 `d00a31e`。独立复审记录与评测前输入指纹已获 [#34 补审通过](https://github.com/yjy18312446491/agent_development/pull/34#issuecomment-7058205770)，经用户授权以 merge commit `cac1216` 合入 main，双亲 `d00a31e` / `18695bb`，树与审查 head 相同，保留原提交关系。原标签 JSON/SHA 和历史编写状态不变；APPROVED 只指标签复审，模型质量仍待验证，原锁保留。[评测规范](RETRIEVAL_EVAL.md)
 
