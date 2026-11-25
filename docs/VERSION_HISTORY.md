@@ -4,6 +4,7 @@
 
 | 日期 | 阶段 | commit | 模块 | 问题 | 改法 | 回归 | 未解决 |
 |---|---|---|---|---|---|---|---|
+| 2026-11-25 | v0.7-eval | PR #51 | eval | 缺少整份简历级别的真实 DeepSeek 批量评测与量化呈现 | 冻结清单 16 例（SHA 锁定），预览零请求、`--live` 预算内真实跑一轮：首试 3（仅片段非空 R07/R11/R16）、总上限 6，3/3 守恒全过、决策零漂移；无项目分金标不评准确率 | `tests/test_live_batch_cn30.py` 6 项；全量 795 通过 | 片段抽取仅 3/30 份命中，样本不代表分布；费用无法从回包核实 |
 | 2026-11-25 | v0.7-fix | PR #50 | vector_index | 沙箱重定向文件系统上目标已存在时 `os.link` 抛裸 `OSError`(WinError 1)，`INDEX_EXISTS` 被误报为 `INDEX_WRITE_FAILED` | 裸 `OSError` 且 `target.exists()` 时仍映射 `INDEX_EXISTS`，其余保持 `INDEX_WRITE_FAILED`；仅错误分类，不改拒绝发布语义 | `tests/test_vector_index.py` 新增 2 条；全量 789 通过 | 未在 C 盘 NTFS/Linux 之外更多文件系统验证 |
 | 2026-11-14 | v0.2-extract | `5833647` | extract | 没有可测试的 PDF 文本抽取 | 增加 `extract_pdf`、结构化状态和文本清洗 | `tests/test_extract.py` | - |
 | 2026-11-14 | v0.2-extract | `2897ecb` | extract | PDF 入口类型注解在 Python 3.9 下不兼容 | 改用 `Union[str, Path]` | `compileall`、`tests.test_extract` | - |
