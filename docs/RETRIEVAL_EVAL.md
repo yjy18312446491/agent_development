@@ -232,6 +232,22 @@ Windows Docker Desktop 复验为可选项；Linux Compose 证据不等于真实 
 
 预留 ¥0.098304，授权预算 ¥0.10。Recall@1=11/12、Recall@3=12/12（分母 12 条有相关岗位查询）。唯一 top-1 分差为 QV004：标注 JD2，模型 JD1（0.540764）略高于 JD2（0.538240），与 v1/held-out 的初级后端错排同类。6 条无关查询 Recall 为 null，其 top-1 不算拒绝成功。`quality_conclusion=NOT_ESTABLISHED`。报告 `retrieval-v2-live-26e43ac6….json` SHA `c04db3dc…`，新锁 SHA `79456a88…`，不提交。
 
+## 2026-11-25 检索质量 v3：BM25 + RRF 混合（纯离线）
+
+`eval.run_retrieval_hybrid` 在三个冻结数据集上验证 Okapi BM25（纯 Python，k1=1.5、b=0.75）与稠密排序的 RRF 融合（k=60）。分词为 ASCII 词元 + 中文二元组，无分词器、无新增依赖。固定控制向量模式：假向量 dense@1 = 6/9、6/9、9/12，融合后 = 7/9、7/9、11/12，Recall@3 均饱和 1.0；融合程序本身能把控制错排拉回。全程零 HTTP、零 Key 读取，`--live` 显式拒绝。
+
+### 真实排序回放（描述性证据，不重跑 live）
+
+用三份已保留 live 报告记录的真实稠密 top-3 排序 + 本地 BM25 排序做 RRF 回放（报告为本地不提交文件，SHA：v1 基线 `16f0dc6f…`、held-out `0ecfaffb…`、v2 `c04db3dc…`，与上文记录一致）：
+
+| 数据集 | dense@1 | sparse@1 | fused@1 | 修复 / 破坏 |
+| --- | --- | --- | --- | --- |
+| v1 | 8/9 | 8/9 | 8/9 | 无 / 无 |
+| held-out | 8/9 | 8/9 | 8/9 | 无 / 无 |
+| v2 | 11/12 | 11/12 | 11/12 | 无 / 无 |
+
+三个数据集唯一的 top-1 错排完全同型（v1 RV005、held-out HV005、v2 QV004）：相关岗位 JD2，稠密与 BM25 都把 JD1 排第一——词法与语义一致地错。结论：**BM25+RRF 混合对真实错排中性（不修复、不破坏）；QV004 类"初级 vs 中级"失配是语义/资历判别问题，词法融合解决不了，下一杠杆是 Rerank（Cross-Encoder）或显式资历特征**。回放是本地一次性分析，无新增真实请求；报告与旧锁全部保留。
+
 ### 2026-11-24 HV 标签复核（起草方，用户授权）
 
 对照岗位：JD1 Python/FastAPI/MySQL/Redis、三年以上；JD2 Python/Flask/MySQL、0～2.5 年且接受应届；JD3 JavaScript/TypeScript/Vue/React、一年以上页面经验。相关仍以等级 2 计。未改 JSON、未调阈值、未重跑 live。

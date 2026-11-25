@@ -6,6 +6,7 @@
 - FastAPI 增加显式 `advisory=embedding` 旁路：默认关闭，不改规则岗位与分数，不落库；超长查询单条跳过。Demo 对 `/favicon.ico` 与 Chrome DevTools 探测路径返回 204。Windows Docker Desktop 仍未做。
 - 用户授权复核 HV001–HV012 共 36 条标签，全部维持原等级；数据 SHA 与 `PENDING_INDEPENDENT_REVIEW` 不变。检索质量 8/9 记为交付限制，不改金标或阈值。
 - 新增检索质量 v2：评测专用 JD4–JD6 与 18 条查询；授权 live 24 向量/3 HTTP/0 重试，Recall@1=11/12，QV004 错排，质量未过关。不改筛选岗位。
+- 新增检索质量 v3 离线混合实验（BM25+RRF，零请求）：假向量控制下融合提升 Recall@1（v2 9/12→11/12）；真实 live 排序回放显示三处错排同型且词法与语义一致地错，词法融合对真实错排中性，修复需 Rerank 或资历特征。
 
 ## [v0.6-delivery-acceptance]
 
