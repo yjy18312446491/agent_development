@@ -313,6 +313,35 @@ def test_publish_race_never_replaces_the_winner(monkeypatch):
     assert not list(vi.INDEX_DIR.glob(".jobs-*.tmp"))
 
 
+def test_generic_link_error_on_existing_target_still_maps_to_index_exists(monkeypatch):
+    _, index = fixture_index()
+    path = vi.save_job_index(index)
+    before = path.read_bytes()
+    original = vi.os.link
+
+    def refusing_link(source, target):
+        if target.exists():
+            # Sandboxed filesystems may report an existing name as a bare
+            # OSError instead of FileExistsError.
+            raise OSError(1, "incorrect function")
+        return original(source, target)
+    monkeypatch.setattr(vi.os, "link", refusing_link)
+    with pytest.raises(vi.VectorIndexError, match="^INDEX_EXISTS$"):
+        vi.save_job_index(index)
+    assert path.read_bytes() == before and not list(vi.INDEX_DIR.glob(".jobs-*"))
+
+
+def test_generic_link_error_without_existing_target_stays_write_failed(monkeypatch):
+    _, index = fixture_index()
+
+    def refusing_link(source, target):
+        raise OSError(1, "incorrect function")
+    monkeypatch.setattr(vi.os, "link", refusing_link)
+    with pytest.raises(vi.VectorIndexError, match="^INDEX_WRITE_FAILED$"):
+        vi.save_job_index(index)
+    assert not list(vi.INDEX_DIR.glob("jobs-*.json")) and not list(vi.INDEX_DIR.glob(".jobs-*"))
+
+
 @pytest.mark.parametrize("filename,expected_id,expected_score", [
     ("S001_normal_backend.pdf", "JD1", 60),
     ("live_pdf_eval/unmatched.pdf", "UNMATCHED", 0),
