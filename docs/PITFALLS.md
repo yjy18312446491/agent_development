@@ -1,5 +1,11 @@
 # 踩坑记录
 
+## [2026-11-25] 硬链接发布索引在不支持硬链接的文件系统上报错误码错类（feat/eval-cn30-quality）
+- **现象**：本机全量测试 2 failed：`test_repeat_save_never_overwrites_an_existing_generation` 与 `test_publish_race_never_replaces_the_winner` 期望 `INDEX_EXISTS`，实际 `INDEX_WRITE_FAILED`；main `323875c` 上同样失败，与 eval-cn30 改动无关。
+- **根因**：`app/vector_index.py` 用 `os.link` 原子发布并只捕 `FileExistsError`；本机 `D:\Temp` 文件系统不支持硬链接，`os.link` 抛 WinError 1 的裸 `OSError`，落入兜底分支。
+- **处理结果**：仅归因未修复（超出评测任务范围）；C 盘 NTFS 下此前全量通过，属环境相关的假阳性失败。
+- **防呆约定**：全量失败先在干净 main 上复现再归因；`os.link` 依赖需声明文件系统前提或捕获 WinError 1 显式报"环境不支持"，修复须单独分支评审。
+
 ## [2026-11-21] 清空环境和 pip isolated 仍回退注册表代理（PR #40）
 - **现象**：新 venv 的 pip 21.2.4 安装退出 2，`check_hostname requires server_hostname`；A 停止，B 未运行。
 - **根因**：Requests 仍发现 Windows 注册表的 IP 形式 HTTPS 代理；urllib3 1.26.6 省略 IP 的 hostname，与代理 context 的主机名校验冲突。
