@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 新增中文合成集判岗质量评测（30 份 R01–R30）：当前代码实测判岗 19/22（86.4%）、异常拦截 4/4、闸门拦截 4 例，报告含混淆矩阵、分组正确率与错排归因；口径为确定性路由 + Mock 项目分，与历史 96.7% 不可比。
 - 新增与 v1 不相交的 12 条 held-out 检索查询；授权 live 一轮 15 向量/3 HTTP/0 重试，Recall@1=8/9，HV005 错排，质量未过关。
 - FastAPI 增加显式 `advisory=embedding` 旁路：默认关闭，不改规则岗位与分数，不落库；超长查询单条跳过。Demo 对 `/favicon.ico` 与 Chrome DevTools 探测路径返回 204。Windows Docker Desktop 仍未做。
 - 用户授权复核 HV001–HV012 共 36 条标签，全部维持原等级；数据 SHA 与 `PENDING_INDEPENDENT_REVIEW` 不变。检索质量 8/9 记为交付限制，不改金标或阈值。
