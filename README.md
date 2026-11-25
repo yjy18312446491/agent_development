@@ -17,6 +17,7 @@
 - 批量筛选已支持逐份处理 PDF，并返回可序列化结果。
 - 批量结果可按批次保存到本地 SQLite，并导出 CSV。
 - FastAPI 提供本地批量上传和按批次回查的单页 Demo，默认使用 Mock 评分。显式 DeepSeek 接口已完成本机单样本真实联调，LangGraph 已编排现有筛选函数；辅助向量检索接口默认关闭。本机已用显式 `--live` 跑通 10 向量传输冒烟，默认筛选仍为 Mock，排序不是检索准确率。[实测与局限](eval/README.md#2026-11-20-真实-embedding-冒烟)
+- `python -m app.mcp_server` 提供 MCP stdio 工具（`screen_resume`/`list_jobs`）：newline-delimited JSON-RPC 2.0，纯标准库零新依赖（官方 SDK 需 Python ≥3.10，本项目 ≥3.9），无网络、无凭据读取，仅默认 Mock，不改筛选契约与 FastAPI。仅限本地 stdio 进程，无鉴权，不做公网暴露。
 - Coze 原型和旧 Python 版的离线评测属于历史资料。当前仓库的验证范围见 [项目状态](docs/STATUS.md)。
 - 已按授权完成独立相关性标签上的真实 15 向量基线：3 次 HTTP、零重试，9 条有相关岗位查询的 Recall@1=8/9，另 3 条无相关查询不计入分母；held-out 同样 8/9。结果只是描述性基线，质量未过关；筛选图不接入检索，HTTP 仅显式 `advisory=embedding` 旁路，不改变 jd_id 或评分。检索质量 v2 已授权 live 一轮 24 向量/3 HTTP，Recall@1=11/12，质量仍未过关。v3 离线混合实验（BM25+RRF，零请求）证实词法融合对真实错排中性，修复需 Rerank 或资历特征。[实测与限制](docs/RETRIEVAL_EVAL.md#2026-11-25-检索质量-v3bm25--rrf-混合纯离线)
 - 历次问题、修复及回归用例见 [版本历史](docs/VERSION_HISTORY.md)。
