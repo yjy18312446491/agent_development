@@ -4,7 +4,7 @@ import re
 from typing import Optional
 
 
-_PROJECT_HEADINGS = {"项目经历", "项目经验", "projects", "project experience", "project highlights"}
+_PROJECT_HEADINGS = {"项目", "项目经历", "项目经验", "projects", "project experience", "project highlights"}
 _END_HEADINGS = {
     "教育背景", "教育经历", "education",
     "专业技能", "技能", "skills",

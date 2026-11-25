@@ -38,7 +38,7 @@ def test_preview_checks_the_frozen_cases_without_config_or_client(monkeypatch, c
     monkeypatch.setattr(evaluator, "DeepSeekClient", forbidden)
     assert evaluator.main([]) == 0
     output = capsys.readouterr().out
-    assert "Cases=16, first attempts=3, retries<=3, requests<=6" in output
+    assert "Cases=17, first attempts=4, retries<=3, requests<=7" in output
     assert "Dry run: 0 network requests." in output
     assert "R19: REVIEW / - / Mock -1, skip." in output
 
@@ -63,13 +63,13 @@ def test_live_report_scores_only_resumes_with_project_snippets(monkeypatch, plan
 
     report = evaluator.run_live(cases, manifest_sha, _client(monkeypatch, respond), "test-model")
     assert report["manifest_sha256_normalized"] == manifest_sha
-    assert report["valid"] == report["success_denominator"] == 3
-    assert report["requests"] == len(sent) == 3
+    assert report["valid"] == report["success_denominator"] == 4
+    assert report["requests"] == len(sent) == 4
     assert report["expected_skips"] == report["skipped"] == 13
     assert report["failed"] == report["not_run"] == 0
-    assert report["tier_drift"] == 3
-    assert report["project_totals"] == [21, 21, 21]
-    assert [row["case_id"] for row in report["cases"] if row["outcome"] == "valid"] == ["R07", "R11", "R16"]
+    assert report["tier_drift"] == 4
+    assert report["project_totals"] == [21, 21, 21, 21]
+    assert [row["case_id"] for row in report["cases"] if row["outcome"] == "valid"] == ["R07", "R09", "R11", "R16"]
     scored = report["cases"][3]
     assert scored["mock"]["total"] == 65 and scored["live"]["total"] == 86 and scored["live"]["tier"] == "A"
     assert scored["end_to_end_total_delta"] == 21 and scored["tier_changed"] is True
@@ -94,14 +94,14 @@ def test_permanent_failure_stops_later_completions_but_preserves_skips(monkeypat
 
     report = evaluator.run_live(cases, manifest_sha, _client(monkeypatch, respond), "test-model")
     assert len(attempts) == report["requests"] == 2
-    assert report["retries"] == 0 and report["failed"] == 1 and report["not_run"] == 1
+    assert report["retries"] == 0 and report["failed"] == 1 and report["not_run"] == 2
     assert report["valid"] == 1 and report["skipped"] == report["expected_skips"] == 13
-    failed = report["cases"][5]
-    assert failed["case_id"] == "R11" and failed["failure"] == {"code": "HTTP_ERROR", "http_status": 401}
+    failed = report["cases"][4]
+    assert failed["case_id"] == "R09" and failed["failure"] == {"code": "HTTP_ERROR", "http_status": 401}
     assert failed["live"]["status"] == "REVIEW" and failed["live"]["reason_code"] == "PROJECT_SCORER_ERROR"
     assert failed["live"]["total"] == -1 and failed["live"]["scores"] is None
-    not_run = report["cases"][9]
-    assert not_run["case_id"] == "R16" and not_run["outcome"] == "not_run"
+    not_run = report["cases"][6]
+    assert not_run["case_id"] == "R11" and not_run["outcome"] == "not_run"
     assert not_run["requests"] == 0 and not_run["live"] is None
 
 
@@ -130,4 +130,4 @@ def test_live_cli_keeps_a_new_report_per_invocation(monkeypatch, tmp_path):
         contents = report_path.read_text(encoding="utf-8")
         assert "test-only" not in contents
         report = json.loads(contents)
-        assert report["valid"] == 3 and report["request_limit"] == 6
+        assert report["valid"] == 4 and report["request_limit"] == 7
