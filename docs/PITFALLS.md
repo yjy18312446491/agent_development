@@ -1,5 +1,11 @@
 # 踩坑记录
 
+## [2026-11-25] 岗位配置 jobs.json 被全仓冻结快照哈希锚定，改一个参数引爆 133 项测试（docs/jd-config-freeze-coupling）
+- **现象**：为修复 R13 判岗错排把 JD2 `max_years` 2.5→3.0，全量测试 133 failed：retrieval/embedding/heldout/v2/hybrid 全部 `*_DATASET_INVALID`，eval_cn30 与 live_batch 基线校验失败，route 配置断言失败。
+- **根因**：`data/synthetic/jobs/jobs.json` 是全仓冻结锚点——检索与 embedding 的冻结数据集按其内容哈希校验，cn30/live_pdf 基线按其路由结果校验；改一处文本使全部快照与历史 live embedding 证据链同时失效。
+- **处理结果**：回退配置（main 回到 795 passed）；R13 保持「岗位配置边界」归因；R18 与 R10 特征同构（均 1/3 命中）无安全修法；R27 当前行为比旧标注更合理。三例错排均维持已知限制，不再尝试代码修复。
+- **防呆约定**：`jobs.json` 属评分/数据契约，任何修改前先 grep 冻结快照引用并评估重建成本（含历史 live 证据链），须单独评审与用户授权，不得作为小修复顺手改动。
+
 ## [2026-11-25] 中文合成简历几乎全部抽不到项目片段，整份简历评测的请求面远小于预期（feat/eval-live-batch-cn30）
 - **现象**：为 30 份中文简历设计批量 DeepSeek 评测时，预注入探针发现 30 份中仅 R07/R11/R16 触发模型调用，其余预览请求次数为 0。
 - **根因**：`extract_project_snippet` 只识别「项目经历/项目经验」等标准标题行，这批合成简历的项目描述多不带标题（如「校园二手交易平台：…」直接出现在段落里），片段为空时 `score_project` 直接返回 0，不发请求。
