@@ -1,5 +1,11 @@
 # 踩坑记录
 
+## [2026-11-25] 中文合成简历几乎全部抽不到项目片段，整份简历评测的请求面远小于预期（feat/eval-live-batch-cn30）
+- **现象**：为 30 份中文简历设计批量 DeepSeek 评测时，预注入探针发现 30 份中仅 R07/R11/R16 触发模型调用，其余预览请求次数为 0。
+- **根因**：`extract_project_snippet` 只识别「项目经历/项目经验」等标准标题行，这批合成简历的项目描述多不带标题（如「校园二手交易平台：…」直接出现在段落里），片段为空时 `score_project` 直接返回 0，不发请求。
+- **处理结果**：批量评测脚本按实际抽取结果决定请求面（本清单首试 3 次、总上限 6），口径与限制写入 eval/README；未放宽片段抽取规则。
+- **防呆约定**：凡"每份简历 1 次请求"类的预算估算，必须先用零请求预注入探针统计实际请求面，不得按份数线性估算；片段抽取规则变化会改变请求面与项目分，调整须单独评审。
+
 ## [2026-11-25] 硬链接发布索引在不支持硬链接的文件系统上报错误码错类（feat/eval-cn30-quality）
 - **现象**：本机全量测试 2 failed：`test_repeat_save_never_overwrites_an_existing_generation` 与 `test_publish_race_never_replaces_the_winner` 期望 `INDEX_EXISTS`，实际 `INDEX_WRITE_FAILED`；main `323875c` 上同样失败，与 eval-cn30 改动无关。
 - **根因**：沙箱重定向的 `D:\Temp` 上，`os.link` 对全新目标成功，但目标已存在时报 WinError 1 的裸 `OSError`（非 `FileExistsError`），落入 `INDEX_WRITE_FAILED` 兜底；首次保存不受影响，仅竞态保护被误分类。
