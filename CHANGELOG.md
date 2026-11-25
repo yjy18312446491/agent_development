@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 修复本地岗位向量索引的原子发布错误分类：文件系统对已存在目标抛裸 `OSError`（WinError 1）时，`target.exists()` 成立仍映射 `INDEX_EXISTS`，竞态保护不再被误报为 `INDEX_WRITE_FAILED`；新增 2 条回归单测，全量 789 通过。
 - 新增中文合成集判岗质量评测（30 份 R01–R30）：当前代码实测判岗 19/22（86.4%）、异常拦截 4/4、闸门拦截 4 例，报告含混淆矩阵、分组正确率与错排归因；口径为确定性路由 + Mock 项目分，与历史 96.7% 不可比。
 - 新增与 v1 不相交的 12 条 held-out 检索查询；授权 live 一轮 15 向量/3 HTTP/0 重试，Recall@1=8/9，HV005 错排，质量未过关。
 - FastAPI 增加显式 `advisory=embedding` 旁路：默认关闭，不改规则岗位与分数，不落库；超长查询单条跳过。Demo 对 `/favicon.ico` 与 Chrome DevTools 探测路径返回 204。Windows Docker Desktop 仍未做。

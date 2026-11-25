@@ -161,10 +161,18 @@ def save_job_index(index: JobVectorIndex, path=None) -> Path:
             handle.flush()
             os.fsync(handle.fileno())
         # Same-directory hard link publishes atomically and refuses an existing name.
-        os.link(temporary, target)
+        try:
+            os.link(temporary, target)
+        except FileExistsError:
+            raise VectorIndexError("INDEX_EXISTS") from None
+        except OSError:
+            if target.exists():
+                # Some filesystems refuse to link onto an existing name with a
+                # generic error instead of FileExistsError; the target still
+                # exists, so refusing to publish keeps the same semantics.
+                raise VectorIndexError("INDEX_EXISTS") from None
+            raise
         return target
-    except FileExistsError:
-        raise VectorIndexError("INDEX_EXISTS") from None
     except VectorIndexError:
         raise
     except (OSError, ValueError, TypeError, AttributeError, OverflowError, UnicodeError):
