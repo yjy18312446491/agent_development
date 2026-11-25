@@ -7,6 +7,7 @@
 - 用户授权复核 HV001–HV012 共 36 条标签，全部维持原等级；数据 SHA 与 `PENDING_INDEPENDENT_REVIEW` 不变。检索质量 8/9 记为交付限制，不改金标或阈值。
 - 新增检索质量 v2：评测专用 JD4–JD6 与 18 条查询；授权 live 24 向量/3 HTTP/0 重试，Recall@1=11/12，QV004 错排，质量未过关。不改筛选岗位。
 - 新增检索质量 v3 离线混合实验（BM25+RRF，零请求）：假向量控制下融合提升 Recall@1（v2 9/12→11/12）；真实 live 排序回放显示三处错排同型且词法与语义一致地错，词法融合对真实错排中性，修复需 Rerank 或资历特征。
+- 新增 MCP stdio 服务 `python -m app.mcp_server`（纯标准库，零新依赖）：暴露 `screen_resume`（默认 Mock 批量筛选）与 `list_jobs` 只读工具；无网络、无凭据读取，不改筛选契约。
 
 ## [v0.6-delivery-acceptance]
 
