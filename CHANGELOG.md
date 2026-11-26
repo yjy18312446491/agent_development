@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 新增请求级 trace_id 贯穿：FastAPI 中间件为每个请求绑定 trace_id（接受入站 `X-Trace-Id` 回显，否则生成 hex uuid），写回 `X-Trace-Id` 响应头并输出 `trace=… method path status duration_ms` 日志；全部 SSE 事件载荷附带 `trace_id`；JSON 响应体刻意不带 trace_id 以保持「POST 与 GET 回查逐字段相等」契约，数据级关联仍由 `batch_id` 承担；新增 `app/tracing.py`（contextvar，线程池工作可见）。
 - MCP stdio 服务扩为 5 工具（版本 0.2.0）：新增只读 `get_batch`（按批次读结果）、`get_batch_tasks`（逐文件任务进度）与 `export_batch_csv`（导出 UTF-8 BOM CSV，仅允许写已存在目录下的新文件、不覆盖）；HTTP 数据访问由既有 FastAPI 端点承担，MCP streamable-HTTP 传输未实现（stdlib-only 服务的既定边界）。
 - 新增有界并发批量筛选与 429 指数退避：`screen_many` 增加 `max_workers`（1–16，默认 1），线程池并发保持输入顺序与失败隔离，同步 API 在 Mock 批量用 4 workers（注入真实评分器保持串行以保预算计数正确）；DeepSeek 客户端 429 重试改为指数退避（1s 起步、每次翻倍、8s 封顶），其他瞬时错误保持 0.5s 固定延迟，重试次数与请求预算契约不变。
 - 新增批次任务状态持久化与断点恢复：`batch_tasks` 表逐文件记录 pending/done，同步端点改为逐份增量落库（结果与任务状态同事务先后写入）；新增 `GET /batches/{id}/tasks` 进度查询与 `POST /batches/{id}/resume` 断点恢复端点——只重筛未完成文件、复用已完成结果并返回 `resumed/reused` 清单，响应结构与 GET/回查一致。
