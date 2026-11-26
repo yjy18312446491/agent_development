@@ -1,5 +1,6 @@
 """Run the screening pipeline for one or more PDF resumes."""
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Sequence, Union
@@ -69,17 +70,31 @@ def screen_many(
     jobs: Optional[Sequence[JobPosting]] = None,
     *,
     project_scorer: Optional[ProjectScorer] = None,
+    max_workers: int = 1,
 ) -> List[BatchRecord]:
-    """Screen each PDF independently and keep one record per path."""
-    records = []
-    for path in pdf_paths:
-        try:
-            result = screen_one(path, jobs, project_scorer=project_scorer)
-        except Exception:
-            # Ordinary file and scorer errors are already handled by screen_one.
-            result = _early_review("ERROR", "REVIEW", "BATCH_ITEM_ERROR", "单份筛选失败，请人工复核")
-        records.append(BatchRecord(Path(path).name, result.finalized))
-    return records
+    """Screen each PDF independently and keep one record per input position.
+
+    ``max_workers`` bounds a thread pool for Mock screening; an injected real
+    scorer keeps its budget counters sequential, so callers pass 1 for it.
+    Output order always matches the input order.
+    """
+    if type(max_workers) is not int or not 1 <= max_workers <= 16:
+        raise ValueError("MAX_WORKERS_INVALID")
+    paths = list(pdf_paths)
+    if max_workers == 1 or len(paths) <= 1:
+        return [_screen_record(path, jobs, project_scorer) for path in paths]
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(paths))) as executor:
+        futures = [executor.submit(_screen_record, path, jobs, project_scorer) for path in paths]
+        return [future.result() for future in futures]
+
+
+def _screen_record(path, jobs, project_scorer) -> BatchRecord:
+    try:
+        result = screen_one(path, jobs, project_scorer=project_scorer)
+    except Exception:
+        # Ordinary file and scorer errors are already handled by screen_one.
+        result = _early_review("ERROR", "REVIEW", "BATCH_ITEM_ERROR", "单份筛选失败，请人工复核")
+    return BatchRecord(Path(path).name, result.finalized)
 
 
 def _early_review(extract_status: str, guard_status: str, code: str, reason: str) -> ScreenResult:

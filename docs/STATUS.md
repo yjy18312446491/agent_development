@@ -2,6 +2,7 @@
 
 ## 当前功能分支已实现
 
+- 有界并发批量筛选与 429 指数退避：`screen_many(max_workers=1..16)` 线程池并发（顺序与失败隔离不变），Mock 批量 API 并发 4 路；DeepSeek 429 重试指数退避（1s→8s 封顶），其他瞬时错误固定 0.5s；真实评分器批量保持串行以保预算计数
 - 批次任务持久化与断点恢复：`batch_tasks` 表逐文件 pending/done 状态，同步端点逐份增量落库；`GET /batches/{id}/tasks` 查询进度与完成度，`POST /batches/{id}/resume` 重传文件后只重筛未完成部分并复用已完成结果
 - FastAPI SSE 流式端点 `POST /batches/stream`：逐份推送 `progress` 事件、结束 `done`（批次可回查）、失败固定 `error` 码；默认同步端点与 Demo 行为不变，流式端点不支持辅助检索
 - 风险感知编排 `screen_one_risk`/`screen_many_risk`：在既有筛选链路后追加确定性风险审查（闸门拦截/复核/无匹配/提示词注入特征）、LangGraph interrupt 人工复核（approve/reject，reject 降级 REVIEW）和 Markdown 评估报告导出（仅派生字段）；auto 模式结果与 `screen_one` 基线逐字段一致，默认链路未改动

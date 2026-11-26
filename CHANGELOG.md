@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 新增有界并发批量筛选与 429 指数退避：`screen_many` 增加 `max_workers`（1–16，默认 1），线程池并发保持输入顺序与失败隔离，同步 API 在 Mock 批量用 4 workers（注入真实评分器保持串行以保预算计数正确）；DeepSeek 客户端 429 重试改为指数退避（1s 起步、每次翻倍、8s 封顶），其他瞬时错误保持 0.5s 固定延迟，重试次数与请求预算契约不变。
 - 新增批次任务状态持久化与断点恢复：`batch_tasks` 表逐文件记录 pending/done，同步端点改为逐份增量落库（结果与任务状态同事务先后写入）；新增 `GET /batches/{id}/tasks` 进度查询与 `POST /batches/{id}/resume` 断点恢复端点——只重筛未完成文件、复用已完成结果并返回 `resumed/reused` 清单，响应结构与 GET/回查一致。
 - 新增 FastAPI SSE 流式端点 `POST /batches/stream`：每份 PDF 筛完即推 `progress` 事件，结束推 `done`（含持久化批次，可回查），失败推固定 `error` 码（上传写入/保存/流式失败），不回传私有细节；默认同步 `POST /batches` 行为不变，multipart 校验抽为共享入口。
 - 新增风险感知编排入口 `app/orchestration.py`（默认链路不变）：`risk_critique` 确定性风险审查（闸门/复核/无匹配/注入特征）、`human_review` LangGraph interrupt 人工复核（approve/reject，reject 降级 REVIEW）、`export_report` Markdown 评估报告（仅派生字段）；`screen_one_risk`/`screen_many_risk` 可选启用，auto 模式行为与基线逐字段一致。

@@ -24,7 +24,7 @@ from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, P
 from app.embedding_client import EmbeddingClient, EmbeddingConfig, EmbeddingError
 from app.project_scorer import make_injected_scorer
 from app.score import ProjectScorer, ProviderStoppedError
-from app.screen import BatchRecord, screen_one
+from app.screen import BatchRecord, screen_many, screen_one
 from app.store import connect, create_task, fetch_batch, fetch_record, fetch_tasks, mark_task_done, save_batch
 
 
@@ -165,11 +165,10 @@ def _screen_and_save(
                 with path.open("xb") as target:
                     copyfileobj(upload.file, target)
                 paths.append(path)
-            records = []
-            for path in paths:
-                result = screen_one(path, project_scorer=scorer)
-                record = BatchRecord(Path(path).name, result.finalized)
-                records.append(record)
+            # Real scorers keep budget counters sequential; Mock screens concurrently.
+            workers = 1 if scorer is not None else 4
+            records = screen_many(paths, project_scorer=scorer, max_workers=workers)
+            for record in records:
                 with closing(connect(db_path)) as conn:
                     save_batch(conn, batch_id, [record])
                     mark_task_done(conn, batch_id, record.source_name)

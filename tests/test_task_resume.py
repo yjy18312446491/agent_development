@@ -2,6 +2,7 @@
 
 from contextlib import closing
 from pathlib import Path
+import sqlite3
 from tempfile import TemporaryDirectory
 
 from fastapi.testclient import TestClient
@@ -63,19 +64,19 @@ def test_sync_batch_registers_and_completes_tasks(local_api):
 
 def test_resume_screens_only_pending_files(local_api, monkeypatch):
     client, db, _ = local_api
-    real_screen_one = screen.screen_one
-    crashed = {"once": False}
+    real_save = api.save_batch
+    failed_once = {"hit": False}
 
-    def flaky_screen(path, jobs=None, *, project_scorer=None):
-        if Path(path).name == S005 and not crashed["once"]:
-            crashed["once"] = True
-            raise RuntimeError("simulated crash")
-        return real_screen_one(path, jobs, project_scorer=project_scorer)
+    def flaky_save(conn, batch_id, records):
+        if records[0].source_name == S005 and not failed_once["hit"]:
+            failed_once["hit"] = True
+            raise sqlite3.OperationalError("simulated crash")
+        return real_save(conn, batch_id, records)
 
-    monkeypatch.setattr(api, "screen_one", flaky_screen)
+    monkeypatch.setattr(api, "save_batch", flaky_save)
     flaky = TestClient(api.app, raise_server_exceptions=False)
-    crashed_response = flaky.post("/batches", files=[_synthetic(S001), _synthetic(S005)])
-    assert crashed_response.status_code == 500
+    crashed = flaky.post("/batches", files=[_synthetic(S001), _synthetic(S005)])
+    assert crashed.status_code == 500
     with closing(connect(db)) as conn:
         rows = conn.execute("SELECT DISTINCT batch_id FROM batch_tasks").fetchall()
         batch_id = rows[-1][0]
