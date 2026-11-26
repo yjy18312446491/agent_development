@@ -29,7 +29,8 @@ def test_extracts_expected_fixture_sections(filename, sections):
 
 
 @pytest.mark.parametrize("heading", [
-    "1. 项目经历", "2、项目经验：", "(3) pRoJeCtS:", "Project Experience", "PROJECT HIGHLIGHTS :",
+    "1. 项目经历", "2、项目经验：", "项目：", "3、项目", "(3) pRoJeCtS:", "Project Experience",
+    "PROJECT HIGHLIGHTS :",
 ])
 def test_accepts_numbered_titles_optional_colons_and_english_capitalization(heading):
     assert extract_project_snippet(f"{heading}\nOriginal project body.\n(4) Skills:\nPython") == (
@@ -75,3 +76,16 @@ def test_existing_pdf_with_inline_project_description_returns_empty(filename):
     # Both PDFs have an inline label. Neither has a standalone project heading.
     assert any(line.startswith("Project experience: ") for line in extracted.text.splitlines())
     assert extract_project_snippet(extracted.text) == ""
+
+
+def test_cn30_resume_with_short_project_heading_yields_snippet():
+    pytest.importorskip("fitz")
+    extracted = extract_pdf(RESUMES.parent / "resumes_cn30" / "R09.pdf")
+
+    assert extracted.ok
+    # The inline "技能：..." tail line is not a standalone heading, so the section
+    # body extends to the end of the document (same semantics as R07/R11/R16).
+    assert extract_project_snippet(extracted.text) == (
+        "个人博客系统：Flask+MySQL实现文章发布、评论功能\n"
+        "技能：Python、Flask、MySQL、Excel处理、HTML"
+    )
