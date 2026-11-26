@@ -322,3 +322,12 @@ live 预检还检查报告路径与写入能力，在任何 HTTP 前独占创建
 `python -m eval.run_retrieval_baseline` 仅预览 3 岗位 + 12 查询的受控方案，不读 Key、不发请求、不占锁。入口已通过 PR #35 Squash 合入 main `f870f48`，树与已审/已测 `b1ba9e7` 相同；历史入口验收为全量 588 项、专项 56 项、Mock 13/13。每轮 `--live` 均须另行授权，保留锁和报告，不自动重跑。[实现与停止边界](../docs/RETRIEVAL_EVAL.md#独立基线入口已合入按轮授权)
 
 2026-11-21 已在 `9bc16b6` 按用户明确授权完成一轮真实 15 向量检索基线：3 HTTP、0 重试、624 token，估算 ¥0.000312、预留 ¥0.06144、授权上限 ¥0.10；账单未核验。12 查询全部排序成功；9 条有相关岗位的宏 Recall@1=8/9、Recall@3=9/9，另 3 条无相关查询 Recall 为 null。RV005 将 JD1 排在标注相关的 JD2 前，保留原标签。结果已获 Cursor 归档复审通过，非整体准确率或模型质量通过，未接线到产品，默认筛选和评分不变。[完整实测与剩余里程碑](../docs/RETRIEVAL_EVAL.md#2026-11-21-真实-15-向量基线已复审)
+
+## 检索质量 v4：资历特征重排（纯离线）
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_retrieval_v4_seniority --fake
+.\.venv\Scripts\python.exe -m eval.run_retrieval_v4_seniority --fake --replay
+```
+
+在 v1/held-out/v2 三个冻结数据集（SHA 每次重验）上做确定性年限可行性重排：从查询提取陈述经验年限，与岗位 `min_years/max_years` 窗口比对后把不可行岗位整体后移，组内保持原序，提取不到年限则完全不变。默认控制向量模式零请求验证程序；`--replay` 只重排本地已保留 live 报告记录的 top-3（逐例校验 SHA，报告缺失时跳过该数据集）。控制向量 dense@1 = 6/9、6/9、9/12 → 重排 = 8/9、8/9、12/12；真实回放 = 8/9、8/9、11/12 → 9/9、9/9、12/12，破坏 0 例、守卫计数 0。不接筛选、无 live 开关、不动 `jobs.json`。[实验与限制](../docs/RETRIEVAL_EVAL.md#2026-11-26-检索质量-v4显式资历特征重排纯离线)
