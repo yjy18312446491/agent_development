@@ -5,6 +5,7 @@ from email.message import Message
 from os import getenv
 from pathlib import Path, PureWindowsPath
 from shutil import copyfileobj
+from time import perf_counter
 import json
 import sqlite3
 from tempfile import TemporaryDirectory
@@ -26,6 +27,7 @@ from app.project_scorer import make_injected_scorer
 from app.score import ProjectScorer, ProviderStoppedError
 from app.screen import BatchRecord, screen_many, screen_one
 from app.store import connect, create_task, fetch_batch, fetch_record, fetch_tasks, mark_task_done, save_batch
+from app.tracing import bind_trace, current_trace_id, log_request, new_trace_id, traced_payload
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -179,6 +181,7 @@ def _screen_and_save(
             items = fetch_batch(conn, batch_id)
     except (OSError, sqlite3.Error):
         raise HTTPException(500, "批次保存失败") from None
+    # trace_id stays in headers/logs/SSE only; bodies must equal GET round-trips.
     payload = {"batch_id": batch_id, "items": items}
     if advisory_payload is not None:
         payload["advisory"] = advisory_payload
@@ -336,7 +339,7 @@ async def resume_batch(
 
 
 def _sse(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return f"event: {event}\ndata: {json.dumps(traced_payload(data), ensure_ascii=False)}\n\n"
 
 
 @router.post(
@@ -420,6 +423,21 @@ def create_app(advisory_service: Optional[DemoAdvisor] = None) -> FastAPI:
     application = FastAPI(title="简历筛选")
     application.include_router(router)
     application.include_router(advisory_router(advisory_service))
+
+    @application.middleware("http")
+    async def trace_middleware(request: Request, call_next):
+        trace_id = request.headers.get("x-trace-id", "").strip() or new_trace_id()
+        token = bind_trace(trace_id)
+        started = perf_counter()
+        status = 500
+        try:
+            response = await call_next(request)
+            status = response.status_code
+        finally:
+            log_request(trace_id, request.method, request.url.path, status, started)
+        response.headers["X-Trace-Id"] = trace_id
+        return response
+
     return application
 
 

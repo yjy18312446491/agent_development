@@ -86,7 +86,8 @@ def test_stream_reports_save_failure_as_error_event(local_api, monkeypatch):
 
     events = _events(response.text)
     errors = [data for name, data in events if name == "error"]
-    assert errors == [{"code": "BATCH_SAVE_ERROR", "message": "批次保存失败"}]
+    assert [(data["code"], data["message"]) for data in errors] == [("BATCH_SAVE_ERROR", "批次保存失败")]
+    assert all("trace_id" in data for _, data in events)  # Events stay trace-correlated.
     assert [name for name, _ in events if name == "done"] == []
     assert "locked" not in response.text
     if db.exists():

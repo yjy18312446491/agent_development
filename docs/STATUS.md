@@ -2,6 +2,7 @@
 
 ## 当前功能分支已实现
 
+- 请求级 trace_id 贯穿：中间件绑定/回显 `X-Trace-Id`、响应与 SSE 事件载荷附 `trace_id`、每请求一行结构化访问日志；`app/tracing.py` contextvar 对线程池工作可见，数据级关联仍由 batch_id 承担
 - MCP stdio 服务 5 工具（v0.2.0）：`screen_resume`（默认 Mock 筛选）、`list_jobs`，新增只读 `get_batch`、`get_batch_tasks`（历史批次与任务进度）与 `export_batch_csv`（防覆盖的 CSV 交付导出）；HTTP 数据访问走既有 FastAPI 端点
 - 有界并发批量筛选与 429 指数退避：`screen_many(max_workers=1..16)` 线程池并发（顺序与失败隔离不变），Mock 批量 API 并发 4 路；DeepSeek 429 重试指数退避（1s→8s 封顶），其他瞬时错误固定 0.5s；真实评分器批量保持串行以保预算计数
 - 批次任务持久化与断点恢复：`batch_tasks` 表逐文件 pending/done 状态，同步端点逐份增量落库；`GET /batches/{id}/tasks` 查询进度与完成度，`POST /batches/{id}/resume` 重传文件后只重筛未完成部分并复用已完成结果
