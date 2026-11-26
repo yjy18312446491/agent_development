@@ -2,6 +2,7 @@
 
 ## 当前功能分支已实现
 
+- 风险感知编排 `screen_one_risk`/`screen_many_risk`：在既有筛选链路后追加确定性风险审查（闸门拦截/复核/无匹配/提示词注入特征）、LangGraph interrupt 人工复核（approve/reject，reject 降级 REVIEW）和 Markdown 评估报告导出（仅派生字段）；auto 模式结果与 `screen_one` 基线逐字段一致，默认链路未改动
 - PDF 文本和候选人字段抽取
 - 文本质量闸门
 - 基于合成 JD 的确定性岗位路由
