@@ -97,6 +97,18 @@ DeepSeek（v2 提示词），4 次请求、0 重试，合计输入 1994 / 输出
 
 非零分需要可在项目片段中找到的非空引证。空片段直接得 0 分。有片段时，客户端返回结构化 JSON，适配层校验并求和。假客户端单测验证数据合同和复核流程。现有 PDF 评测和项目分标注各自维护。
 
+## 项目分人工标注流程（盲评工作表）
+
+人工打分按四步走：①标注者只读上面这张 0/3/7/10 三维评分标准；②用下面命令生成**盲评**工作表（只有片段 + 岗位要求，没有金标分数和理由列）；③标注者独立填写 `annotator` 与三维分数；④用 `--check` 对照冻结金标算一致性，分歧逐条人工仲裁。
+
+```powershell
+.\.venv\Scripts\python.exe -m eval.run_project_score_annotation
+.\.venv\Scripts\python.exe -m eval.run_project_score_annotation --worksheet
+.\.venv\Scripts\python.exe -m eval.run_project_score_annotation --check <填好的工作表.csv>
+```
+
+工作表覆盖全部 15 条冻结片段（12 条原标注 + 3 条 v2 对照），带 UTF-8 BOM 可直接用 Excel 编辑，也兼容 Label Studio/doccano 等外部标注平台（CSV 往返即可）。`--check` 校验：case_id 与片段必须与冻结版本逐字节一致、分数必须在评分标准档位、标注者列非空；一致性输出逐维精确匹配数、MAE 与二次加权 Cohen's κ。退出码：0 全部有效且无分歧，1 工作表填写有误或存在分歧（分歧是仲裁输入，不是失败），2 路径或冻结数据出错。一致性是描述性指标，不改金标、不设通过线；报告写入本地 `eval/reports/annotation-*.csv|.json`，不入 Git。全程零请求。若引入更多合成片段，先扩冻结清单再重新生成工作表，标注者不得参考任何模型输出。
+
 ## DeepSeek 真实冒烟测试
 
 下面第一条只列出会试跑的固定场景。第二条显式启用真实调用，会产生 API 用量。入口只读取冻结标注中的 `full_30`、`tools_only`、`jailbreak_tools` 三条合成片段和对应岗位要求。
