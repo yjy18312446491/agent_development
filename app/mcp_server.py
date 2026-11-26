@@ -1,23 +1,29 @@
-"""Local MCP server over stdio: exposes Mock screening and job listing as tools.
+"""Local MCP server over stdio: Mock screening, job listing and batch inspection.
 
 Newline-delimited JSON-RPC 2.0 (MCP stdio transport), Python 3.9 stdlib only.
-No network, no credentials, default Mock scorer; results match app.screen.
+No network, no credentials, default Mock scorer; results match app.screen and
+app.store. HTTP access to the same data is served by the FastAPI endpoints
+(GET /batches, /batches/{id}/tasks); an MCP streamable-HTTP transport is out
+of scope for this stdlib-only server.
 """
 
 import json
 import sys
+from contextlib import closing
 from io import BufferedIOBase
+from os import getenv
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from app.route import load_jobs
 from app.screen import screen_many
+from app.store import connect, export_csv, fetch_batch, fetch_tasks
 
 
 ROOT = Path(__file__).resolve().parents[1]
 JOBS_FILE = ROOT / "data/synthetic/jobs/jobs.json"
 PROTOCOL_VERSION = "2024-11-05"
-SERVER_INFO = {"name": "resume-screening-agent", "version": "0.1.0"}
+SERVER_INFO = {"name": "resume-screening-agent", "version": "0.2.0"}
 
 _TOOLS = [
     {
@@ -40,6 +46,37 @@ _TOOLS = [
         "description": "列出当前筛选使用的岗位（JD1–JD3）及年限与技能要求，只读。",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "get_batch",
+        "description": "按批次 ID 读取本地 SQLite 中已保存的筛选结果，只读，不发起筛选。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"batch_id": {"type": "string", "minLength": 1}},
+            "required": ["batch_id"],
+        },
+    },
+    {
+        "name": "get_batch_tasks",
+        "description": "按批次 ID 读取逐文件任务状态（pending/done）与完成度，只读。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"batch_id": {"type": "string", "minLength": 1}},
+            "required": ["batch_id"],
+        },
+    },
+    {
+        "name": "export_batch_csv",
+        "description": "把已保存批次导出为 UTF-8 BOM 的 CSV 文件；目标文件必须不存在（不覆盖），只读数据库。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "batch_id": {"type": "string", "minLength": 1},
+                "csv_path": {"type": "string", "minLength": 1,
+                             "description": "目标 CSV 路径；父目录必须已存在"},
+            },
+            "required": ["batch_id", "csv_path"],
+        },
+    },
 ]
 
 
@@ -60,7 +97,73 @@ def _tool_list_jobs(arguments: Dict[str, Any]) -> Dict[str, Any]:
                       "bonus_skills": list(job.bonus_skills)} for job in jobs]}
 
 
-_TOOL_HANDLERS = {"screen_resume": _tool_screen_resume, "list_jobs": _tool_list_jobs}
+def _task_db_path() -> Path:
+    return Path(getenv("SCREEN_DB_PATH") or ROOT / "tmp" / "screen-results.sqlite")
+
+
+def _require_batch_id(arguments: Dict[str, Any]) -> str:
+    batch_id = arguments.get("batch_id")
+    if not isinstance(batch_id, str) or not batch_id.strip():
+        raise ValueError("batch_id 必须是非空字符串")
+    return batch_id.strip()
+
+
+def _open_batch_db():
+    path = _task_db_path()
+    if not path.is_file():
+        raise ValueError("结果数据库尚未创建，批次不存在")
+    return connect(path)
+
+
+def _tool_get_batch(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    batch_id = _require_batch_id(arguments)
+    with closing(_open_batch_db()) as conn:
+        items = fetch_batch(conn, batch_id)
+    if not items:
+        raise ValueError("批次不存在")
+    return {"batch_id": batch_id, "items": items}
+
+
+def _tool_get_batch_tasks(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    batch_id = _require_batch_id(arguments)
+    with closing(_open_batch_db()) as conn:
+        tasks = fetch_tasks(conn, batch_id)
+    if not tasks:
+        raise ValueError("批次不存在")
+    done = sum(1 for task in tasks if task["status"] == "done")
+    return {"batch_id": batch_id, "total": len(tasks), "done": done,
+            "complete": done == len(tasks), "tasks": tasks}
+
+
+def _tool_export_batch_csv(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    batch_id = _require_batch_id(arguments)
+    raw = arguments.get("csv_path")
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError("csv_path 必须是非空字符串")
+    target = Path(raw.strip())
+    if (
+        target.suffix.casefold() != ".csv"
+        or any(char in target.name for char in '/\\<>:"|?*')
+        or target.exists()
+        or not target.parent.is_dir()
+    ):
+        raise ValueError("csv_path 必须指向已存在目录下的新 .csv 文件")
+    with closing(_open_batch_db()) as conn:
+        rows = fetch_batch(conn, batch_id)
+    if not rows:
+        raise ValueError("批次不存在")
+    try:
+        export_csv(rows, target)
+    except OSError:
+        raise ValueError("CSV 写入失败") from None
+    return {"batch_id": batch_id, "csv_path": str(target), "rows": len(rows)}
+
+
+_TOOL_HANDLERS = {
+    "screen_resume": _tool_screen_resume, "list_jobs": _tool_list_jobs,
+    "get_batch": _tool_get_batch, "get_batch_tasks": _tool_get_batch_tasks,
+    "export_batch_csv": _tool_export_batch_csv,
+}
 
 
 def _result(request_id: Any, payload: Dict[str, Any]) -> Dict[str, Any]:

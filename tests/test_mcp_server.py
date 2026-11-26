@@ -50,11 +50,12 @@ def test_initialize_handshake_and_notifications_get_no_reply():
     assert responses[1]["result"] == {}
 
 
-def test_tools_list_exposes_two_documented_tools():
+def test_tools_list_exposes_documented_tools():
     responses = exchange([{"jsonrpc": "2.0", "id": 7, "method": "tools/list"}])
     tools = {tool["name"]: tool for tool in responses[0]["result"]["tools"]}
-    assert set(tools) == {"screen_resume", "list_jobs"}
+    assert set(tools) == {"screen_resume", "list_jobs", "get_batch", "get_batch_tasks", "export_batch_csv"}
     assert tools["screen_resume"]["inputSchema"]["required"] == ["pdf_paths"]
+    assert tools["export_batch_csv"]["inputSchema"]["required"] == ["batch_id", "csv_path"]
 
 
 def test_screen_resume_tool_scores_synthetic_pdf_with_default_mock():
@@ -93,6 +94,68 @@ def test_list_jobs_returns_frozen_three_jobs():
     assert is_error is False
     assert [job["jd_id"] for job in payload["jobs"]] == ["JD1", "JD2", "JD3"]
     assert all(job["skills"] for job in payload["jobs"])
+
+
+@pytest.fixture
+def seeded_batch(tmp_path, monkeypatch):
+    from contextlib import closing as _closing
+
+    from app.screen import BatchRecord, screen_one
+    from app.store import connect, create_task, mark_task_done, save_batch
+
+    db = tmp_path / "results.sqlite"
+    monkeypatch.setenv("SCREEN_DB_PATH", str(db))
+    batch_id = "b" * 32
+    pdf = mcp.ROOT / "data/synthetic/resumes/S001_normal_backend.pdf"
+    with _closing(connect(db)) as conn:
+        create_task(conn, batch_id, ["S001_normal_backend.pdf"])
+        save_batch(conn, batch_id, [
+            BatchRecord("S001_normal_backend.pdf", screen_one(pdf).finalized)])
+        mark_task_done(conn, batch_id, "S001_normal_backend.pdf")
+    return batch_id, tmp_path
+
+
+def test_get_batch_reads_stored_results(seeded_batch):
+    batch_id, _ = seeded_batch
+    payload, is_error = call_tool("get_batch", {"batch_id": batch_id})
+    assert is_error is False
+    assert payload["items"][0]["total"] == 60 and payload["items"][0]["tier"] == "B"
+
+    missing, is_error = call_tool("get_batch", {"batch_id": "unknown"})
+    assert is_error is True and missing["error"] == "批次不存在"
+
+
+def test_get_batch_tasks_reports_progress(seeded_batch):
+    batch_id, _ = seeded_batch
+    payload, is_error = call_tool("get_batch_tasks", {"batch_id": batch_id})
+    assert is_error is False
+    assert (payload["total"], payload["done"], payload["complete"]) == (1, 1, True)
+    assert payload["tasks"][0]["status"] == "done"
+
+
+def test_export_batch_csv_writes_new_file_only(seeded_batch):
+    batch_id, tmp_path = seeded_batch
+    target = tmp_path / "export.csv"
+    payload, is_error = call_tool("export_batch_csv", {"batch_id": batch_id, "csv_path": str(target)})
+    assert is_error is False
+    assert payload["rows"] == 1 and target.exists()
+    header = target.read_text(encoding="utf-8-sig").splitlines()[0]
+    assert header.startswith("batch_id,source_name")
+
+    again, is_error = call_tool("export_batch_csv", {"batch_id": batch_id, "csv_path": str(target)})
+    assert is_error is True and "新 .csv" in again["error"]
+
+    bad_suffix, is_error = call_tool("export_batch_csv", {"batch_id": batch_id, "csv_path": str(tmp_path / "x.txt")})
+    assert is_error is True
+    missing_dir, is_error = call_tool(
+        "export_batch_csv", {"batch_id": batch_id, "csv_path": str(tmp_path / "nope" / "x.csv")})
+    assert is_error is True
+
+
+def test_batch_tools_report_missing_database(monkeypatch, tmp_path):
+    monkeypatch.setenv("SCREEN_DB_PATH", str(tmp_path / "absent.sqlite"))
+    payload, is_error = call_tool("get_batch", {"batch_id": "whatever"})
+    assert is_error is True and "尚未创建" in payload["error"]
 
 
 def test_protocol_errors_and_garbage_lines_are_isolated():
