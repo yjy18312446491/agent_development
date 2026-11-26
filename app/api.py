@@ -5,6 +5,7 @@ from email.message import Message
 from os import getenv
 from pathlib import Path, PureWindowsPath
 from shutil import copyfileobj
+import json
 import sqlite3
 from tempfile import TemporaryDirectory
 from typing import AsyncIterator, List, Optional
@@ -15,7 +16,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import FormData, UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.requests import ClientDisconnect
-from starlette.responses import FileResponse, Response
+from starlette.responses import FileResponse, Response, StreamingResponse
 
 from app.advisory import DemoAdvisor, advisory_router
 from app.batch_advisory import attach_embedding_advisory
@@ -23,7 +24,7 @@ from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, P
 from app.embedding_client import EmbeddingClient, EmbeddingConfig, EmbeddingError
 from app.project_scorer import make_injected_scorer
 from app.score import ProjectScorer, ProviderStoppedError
-from app.screen import screen_many
+from app.screen import BatchRecord, screen_many, screen_one
 from app.store import connect, fetch_batch, save_batch
 
 
@@ -89,6 +90,24 @@ def _validated_uploads(form: FormData) -> List[UploadFile]:
         seen.add(folded)
         uploads.append(upload)
     return uploads
+
+
+async def _parse_upload_form(request: Request) -> tuple:
+    """Shared multipart gate; returns (uploads, form) so callers close form late."""
+    if request.headers.get("content-type", "").partition(";")[0].strip().lower() != "multipart/form-data":
+        raise HTTPException(422, INVALID_UPLOAD)
+    parser = MultiPartParser(request.headers, _bounded_body(request), max_files=MAX_FILES, max_fields=0)
+    try:
+        form = await parser.parse()
+    except (MultiPartException, ValueError):
+        raise HTTPException(422, INVALID_UPLOAD) from None
+    except OSError:
+        raise HTTPException(500, "批次保存失败") from None
+    try:
+        return _validated_uploads(form), form
+    except BaseException:
+        await form.close()
+        raise
 
 
 def _make_deepseek_scorer(file_count: int) -> ProjectScorer:
@@ -196,17 +215,8 @@ async def create_batch(
         raise HTTPException(422, "项目评分方式不符合要求")
     if advisory not in (None, "embedding"):
         raise HTTPException(422, "辅助检索方式不符合要求")
-    if request.headers.get("content-type", "").partition(";")[0].strip().lower() != "multipart/form-data":
-        raise HTTPException(422, INVALID_UPLOAD)
-    parser = MultiPartParser(request.headers, _bounded_body(request), max_files=MAX_FILES, max_fields=0)
+    uploads, form = await _parse_upload_form(request)
     try:
-        form = await parser.parse()
-    except (MultiPartException, ValueError):
-        raise HTTPException(422, INVALID_UPLOAD) from None
-    except OSError:
-        raise HTTPException(500, "批次保存失败") from None
-    try:
-        uploads = _validated_uploads(form)
         return await run_in_threadpool(_screen_and_save, uploads, project_scorer, advisory)
     finally:
         await form.close()
@@ -225,6 +235,87 @@ def get_batch(batch_id: str) -> dict:
     if not items:
         raise HTTPException(404, "批次不存在")
     return {"batch_id": batch_id, "items": items}
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.post(
+    "/batches/stream",
+    openapi_extra={"requestBody": {"required": True, "content": {"multipart/form-data": {
+        "schema": {"type": "object", "required": ["files"], "properties": {
+            "files": {"type": "array", "items": {"type": "string", "format": "binary"}},
+        }},
+    }}}},
+)
+async def create_batch_stream(
+    request: Request,
+    project_scorer: Optional[str] = None,
+    advisory: Optional[str] = None,
+) -> StreamingResponse:
+    """Screen uploaded PDFs and push per-file progress as server-sent events.
+
+    Emits ``progress`` after each file, then ``done`` with the persisted batch,
+    or ``error`` with a fixed code and no private detail.
+    """
+    if project_scorer not in (None, "deepseek"):
+        raise HTTPException(422, "项目评分方式不符合要求")
+    if advisory is not None:
+        raise HTTPException(422, "流式端点不支持辅助检索")
+    uploads, form = await _parse_upload_form(request)
+    try:
+        scorer = _make_deepseek_scorer(len(uploads)) if project_scorer == "deepseek" else None
+
+        async def _stream() -> AsyncIterator[str]:
+            try:
+                records: List[BatchRecord] = []
+                try:
+                    with TemporaryDirectory(prefix="screen-upload-") as directory:
+                        paths = []
+                        for upload in uploads:
+                            path = Path(directory) / upload.filename
+                            with path.open("xb") as target:
+                                copyfileobj(upload.file, target)
+                            paths.append(path)
+                        total = len(paths)
+                        for index, path in enumerate(paths):
+                            result = await run_in_threadpool(screen_one, path, None, project_scorer=scorer)
+                            records.append(BatchRecord(Path(path).name, result.finalized))
+                            yield _sse("progress", {
+                                "index": index, "total": total, "source_name": Path(path).name,
+                                "status": result.score.status, "jd_id": result.score.jd_id,
+                                "score": result.score.total,
+                            })
+                except OSError:
+                    yield _sse("error", {"code": "UPLOAD_WRITE_ERROR", "message": INVALID_UPLOAD})
+                    return
+                except Exception:
+                    yield _sse("error", {"code": "BATCH_STREAM_ERROR", "message": "流式筛选失败"})
+                    return
+                batch_id = uuid4().hex
+                db_path = _db_path()
+
+                def _save() -> List[dict]:
+                    db_path.parent.mkdir(parents=True, exist_ok=True)
+                    with closing(connect(db_path)) as conn:
+                        save_batch(conn, batch_id, records)
+                        return fetch_batch(conn, batch_id)
+
+                try:
+                    items = await run_in_threadpool(_save)
+                except (OSError, sqlite3.Error):
+                    yield _sse("error", {"code": "BATCH_SAVE_ERROR", "message": "批次保存失败"})
+                    return
+                yield _sse("done", {"batch_id": batch_id, "items": items})
+            finally:
+                await form.close()
+
+        return StreamingResponse(_stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    except BaseException:
+        await form.close()
+        raise
 
 
 def create_app(advisory_service: Optional[DemoAdvisor] = None) -> FastAPI:
