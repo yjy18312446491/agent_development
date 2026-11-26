@@ -24,8 +24,8 @@ from app.deepseek_client import DeepSeekClient, DeepSeekConfig, DeepSeekError, P
 from app.embedding_client import EmbeddingClient, EmbeddingConfig, EmbeddingError
 from app.project_scorer import make_injected_scorer
 from app.score import ProjectScorer, ProviderStoppedError
-from app.screen import BatchRecord, screen_many, screen_one
-from app.store import connect, fetch_batch, save_batch
+from app.screen import BatchRecord, screen_one
+from app.store import connect, create_task, fetch_batch, fetch_record, fetch_tasks, mark_task_done, save_batch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -154,6 +154,10 @@ def _screen_and_save(
     batch_id = uuid4().hex
     advisory_payload = None
     try:
+        db_path = _db_path()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        with closing(connect(db_path)) as conn:
+            create_task(conn, batch_id, [upload.filename for upload in uploads])
         with TemporaryDirectory(prefix="screen-upload-") as directory:
             paths = []
             for upload in uploads:
@@ -161,14 +165,18 @@ def _screen_and_save(
                 with path.open("xb") as target:
                     copyfileobj(upload.file, target)
                 paths.append(path)
-            records = screen_many(paths, project_scorer=scorer)
+            records = []
+            for path in paths:
+                result = screen_one(path, project_scorer=scorer)
+                record = BatchRecord(Path(path).name, result.finalized)
+                records.append(record)
+                with closing(connect(db_path)) as conn:
+                    save_batch(conn, batch_id, [record])
+                    mark_task_done(conn, batch_id, record.source_name)
             if embed_config is not None:
                 advisory_payload = attach_embedding_advisory(paths, EmbeddingClient(embed_config))
 
-        db_path = _db_path()
-        db_path.parent.mkdir(parents=True, exist_ok=True)
         with closing(connect(db_path)) as conn:
-            save_batch(conn, batch_id, records)
             items = fetch_batch(conn, batch_id)
     except (OSError, sqlite3.Error):
         raise HTTPException(500, "批次保存失败") from None
@@ -235,6 +243,97 @@ def get_batch(batch_id: str) -> dict:
     if not items:
         raise HTTPException(404, "批次不存在")
     return {"batch_id": batch_id, "items": items}
+
+
+@router.get("/batches/{batch_id}/tasks")
+def get_batch_tasks(batch_id: str) -> dict:
+    db_path = _db_path()
+    if not db_path.is_file():
+        raise HTTPException(404, "批次不存在")
+    try:
+        with closing(connect(db_path)) as conn:
+            tasks = fetch_tasks(conn, batch_id)
+    except sqlite3.Error:
+        raise HTTPException(500, "批次读取失败") from None
+    if not tasks:
+        raise HTTPException(404, "批次不存在")
+    done = [task for task in tasks if task["status"] == "done"]
+    return {
+        "batch_id": batch_id, "total": len(tasks), "done": len(done),
+        "complete": len(done) == len(tasks), "tasks": tasks,
+    }
+
+
+def _resume_and_save(batch_id: str, uploads: List[UploadFile], project_scorer: Optional[str]) -> dict:
+    db_path = _db_path()
+    try:
+        with closing(connect(db_path)) as conn:
+            tasks = fetch_tasks(conn, batch_id)
+    except sqlite3.Error:
+        raise HTTPException(500, "批次读取失败") from None
+    if not tasks:
+        raise HTTPException(404, "批次不存在")
+    known = {task["source_name"] for task in tasks}
+    done = {task["source_name"] for task in tasks if task["status"] == "done"}
+    uploaded = [upload.filename for upload in uploads]
+    if any(name not in known for name in uploaded):
+        raise HTTPException(422, "批次任务不含该文件名")
+
+    resumed, reused = [], []
+    try:
+        pending_names = []
+        for name in uploaded:
+            if name in done:
+                with closing(connect(db_path)) as conn:
+                    if fetch_record(conn, batch_id, name) is not None:
+                        reused.append(name)
+                        continue
+            pending_names.append(name)
+        scorer = _make_deepseek_scorer(len(pending_names)) if project_scorer == "deepseek" else None
+        with TemporaryDirectory(prefix="screen-upload-") as directory:
+            paths = []
+            for upload in uploads:
+                if upload.filename not in pending_names:
+                    continue
+                path = Path(directory) / upload.filename
+                with path.open("xb") as target:
+                    copyfileobj(upload.file, target)
+                paths.append(path)
+            for path in paths:
+                result = screen_one(path, project_scorer=scorer)
+                record = BatchRecord(Path(path).name, result.finalized)
+                with closing(connect(db_path)) as conn:
+                    save_batch(conn, batch_id, [record])
+                    mark_task_done(conn, batch_id, record.source_name)
+                resumed.append(record.source_name)
+        with closing(connect(db_path)) as conn:
+            items = fetch_batch(conn, batch_id)
+    except (OSError, sqlite3.Error):
+        raise HTTPException(500, "批次保存失败") from None
+    return {"batch_id": batch_id, "items": items, "resumed": resumed, "reused": reused}
+
+
+@router.post(
+    "/batches/{batch_id}/resume",
+    openapi_extra={"requestBody": {"required": True, "content": {"multipart/form-data": {
+        "schema": {"type": "object", "required": ["files"], "properties": {
+            "files": {"type": "array", "items": {"type": "string", "format": "binary"}},
+        }},
+    }}}},
+)
+async def resume_batch(
+    batch_id: str,
+    request: Request,
+    project_scorer: Optional[str] = None,
+) -> dict:
+    """Finish an interrupted batch: only task rows not yet done are re-screened."""
+    if project_scorer not in (None, "deepseek"):
+        raise HTTPException(422, "项目评分方式不符合要求")
+    uploads, form = await _parse_upload_form(request)
+    try:
+        return await run_in_threadpool(_resume_and_save, batch_id, uploads, project_scorer)
+    finally:
+        await form.close()
 
 
 def _sse(event: str, data: dict) -> str:

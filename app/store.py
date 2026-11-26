@@ -1,9 +1,10 @@
 """Persist screened batches in SQLite and export their records as CSV."""
 
 import csv
+from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
 import sqlite3
-from typing import List, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 from app.screen import BatchRecord
 
@@ -37,6 +38,16 @@ CREATE TABLE IF NOT EXISTS screen_results (
     UNIQUE (batch_id, source_name)
 )
 """
+_CREATE_TASKS = """
+CREATE TABLE IF NOT EXISTS batch_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id TEXT NOT NULL,
+    source_name TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'done')),
+    updated_at TEXT NOT NULL,
+    UNIQUE (batch_id, source_name)
+)
+"""
 _INSERT_RESULT = """
 INSERT INTO screen_results (
     batch_id, source_name, extract_status, guard_status, status,
@@ -56,6 +67,18 @@ FROM screen_results
 WHERE batch_id = ?
 ORDER BY id
 """
+_FETCH_RECORD = _FETCH_BATCH + " AND source_name = ?"
+_INSERT_TASK = """
+INSERT INTO batch_tasks (batch_id, source_name, status, updated_at)
+VALUES (?, ?, 'pending', ?)
+"""
+_MARK_DONE = """
+UPDATE batch_tasks SET status = 'done', updated_at = ?
+WHERE batch_id = ? AND source_name = ?
+"""
+_FETCH_TASKS = """
+SELECT source_name, status FROM batch_tasks WHERE batch_id = ? ORDER BY id
+"""
 
 
 def connect(db_path: Union[str, Path]) -> sqlite3.Connection:
@@ -63,6 +86,7 @@ def connect(db_path: Union[str, Path]) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     try:
         conn.execute(_CREATE_TABLE)
+        conn.execute(_CREATE_TASKS)
     except sqlite3.Error:
         conn.close()
         raise
@@ -98,6 +122,41 @@ def save_batch(conn: sqlite3.Connection, batch_id: str, records: Sequence[BatchR
 def fetch_batch(conn: sqlite3.Connection, batch_id: str) -> List[dict]:
     """Fetch the batch in insertion order with null fields preserved."""
     return [dict(row) for row in conn.execute(_FETCH_BATCH, (batch_id,))]
+
+
+def fetch_record(conn: sqlite3.Connection, batch_id: str, source_name: str) -> Optional[dict]:
+    """Fetch one stored result, or None when the file has no result yet."""
+    row = conn.execute(_FETCH_RECORD, (batch_id, source_name)).fetchone()
+    return dict(row) if row is not None else None
+
+
+def create_task(conn: sqlite3.Connection, batch_id: str, source_names: Sequence[str]) -> int:
+    """Register pending task rows in upload order; blank or path-like names are rejected."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with conn:
+        for name in source_names:
+            if (
+                not name
+                or name != Path(name).name
+                or name != PureWindowsPath(name).name
+            ):
+                raise ValueError("source_name must be a file name")
+            conn.execute(_INSERT_TASK, (batch_id, name, now))
+    return len(source_names)
+
+
+def mark_task_done(conn: sqlite3.Connection, batch_id: str, source_name: str) -> None:
+    """Flip one task row to done; missing rows raise instead of vanishing."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with conn:
+        cursor = conn.execute(_MARK_DONE, (now, batch_id, source_name))
+        if cursor.rowcount != 1:
+            raise ValueError("TASK_ROW_MISSING")
+
+
+def fetch_tasks(conn: sqlite3.Connection, batch_id: str) -> List[dict]:
+    """Return task rows in creation order: source_name and status per file."""
+    return [dict(row) for row in conn.execute(_FETCH_TASKS, (batch_id,))]
 
 
 def export_csv(rows: Sequence[dict], csv_path: Union[str, Path]) -> None:
