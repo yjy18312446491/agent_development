@@ -4,6 +4,7 @@
 
 | 日期 | 阶段 | commit | 模块 | 问题 | 改法 | 回归 | 未解决 |
 |---|---|---|---|---|---|---|---|
+| 2026-11-26 | v0.7-eval | PR #56 | orchestration | 编排缺少风险审查与人工复核闭环：高风险结果只静默标 REVIEW，无暂停决策与评估报告 | `app/orchestration.py` 在既有链路后加 `risk_critique`（闸门/复核/无匹配/注入特征确定性规则）+ `human_review`（interrupt 模式暂停等人工 approve/reject，reject 降级 `HUMAN_REVIEW_REJECTED`；auto 模式保持现状）+ `export_report`（Markdown 报告，仅派生字段，文件名消毒）；`screen_one_risk`/`screen_many_risk` 可选启用，默认 `screen_one` 不动 | `tests/test_orchestration.py` 22 项；全量 836 通过 | 报告只含单份结论无批次汇总；注入特征是固定模式清单非模型判别；interrupt 需外部 Checkpointer（本 PR 未持久化） |
 | 2026-11-26 | v0.7-eval | PR #55 | eval annotation | 人工打分缺少可复用的盲评工具：第二标注者只能裸标，一致性无法量化 | `eval/run_project_score_annotation.py`：从 15 条冻结片段生成盲评 CSV（无金标/理由列，片段字节级锁定），`--check` 校验档位与完整性并输出逐维匹配、MAE、二次加权 κ；分歧进人工仲裁，不改金标 | `tests/test_project_score_annotation.py` 7 项；全量 814 通过 | 单标注者对金标的一致性是描述性指标；多标注者间 κ 与样本扩充未做 |
 | 2026-11-26 | v0.7-eval | PR #54 | retrieval eval | v3 回放显示三处真实 top-1 错排同型（初级 vs 中级年限失配），BM25+RRF 词法融合无效 | `eval/run_retrieval_v4_seniority.py` 显式资历特征：查询年限正则提取（应届/半年/N年半）+ `min/max_years` 窗口可行性重排，组内保序、无年限则中性；控制向量修复 7 处年限型错排，真实 live 回放 RV005/HV005/QV004 修复零破坏 | `tests/test_retrieval_v4_seniority.py` 9 项；全量 807 通过 | 冻结集外「上半年」类词组可能误报年限；RV008/HV008 技能域错排修不了；未接筛选/FastAPI/Demo，质量仍 NOT_ESTABLISHED |
 | 2026-11-25 | v0.7-eval | PR #52 | project_snippet | cn30 仅 3/30 份能抽到项目片段，真实评测样本面过小 | 标题集合加入短标题「项目」，覆盖 3/30→4/30（R09）；清单扩至 17 例，授权预算内 live 一轮 4/4 有效、决策零漂移 | `tests/test_project_snippet.py`、`tests/test_live_batch_cn30.py`；全量 798 通过 | 26 份无独立项目段属格式事实；片段尾部内联「技能：…」并入正文的既有语义未改 |

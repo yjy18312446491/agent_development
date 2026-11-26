@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- 新增风险感知编排入口 `app/orchestration.py`（默认链路不变）：`risk_critique` 确定性风险审查（闸门/复核/无匹配/注入特征）、`human_review` LangGraph interrupt 人工复核（approve/reject，reject 降级 REVIEW）、`export_report` Markdown 评估报告（仅派生字段）；`screen_one_risk`/`screen_many_risk` 可选启用，auto 模式行为与基线逐字段一致。
 - 新增项目分人工标注流程（盲评工作表 + 一致性校验，纯离线零请求）：`eval.run_project_score_annotation` 从 15 条冻结片段生成无金标泄漏的盲评 CSV，`--check` 校验片段完整性、档位合法性与标注者列，并输出逐维精确匹配、MAE 与二次加权 Cohen's κ；分歧作为人工仲裁输入，不改金标、不设通过线。
 - 新增检索质量 v4 资历特征重排（纯离线零请求）：查询年限与岗位 min/max 窗口比对后确定性重排；控制向量下 7 处年限型错排修复（RV008/HV008 技能域错排维持），真实 live 排序回放 RV005/HV005/QV004 全部修复且零破坏（v1 8/9→9/9、held-out 8/9→9/9、v2 11/12→12/12）；不接筛选，质量结论仍为 NOT_ESTABLISHED。
 - 项目片段抽取识别中文短标题「项目」：cn30 覆盖 3/30→4/30（R09），批量评测清单扩至 17 例；授权预算内 live 一轮 4 请求/0 重试，4/4 有效、守恒全过、决策零漂移，R07 升 A、R11/R16 由 C 升 B。
