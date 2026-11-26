@@ -99,3 +99,40 @@ def test_empty_input_does_not_call_screen_one():
     with patch("app.screen.screen_one") as run:
         assert screen_many([]) == []
     run.assert_not_called()
+
+
+def test_concurrent_screening_matches_sequential_results_and_order():
+    pytest.importorskip("fitz")
+    paths = sorted(RESUMES.glob("S*.pdf"))
+
+    parallel = screen_many(paths, max_workers=4)
+    sequential = screen_many(paths, max_workers=1)
+
+    assert parallel == sequential
+    assert [record.source_name for record in parallel] == [path.name for path in paths]
+
+
+def test_concurrent_failure_isolation_keeps_other_positions(tmp_path):
+    pytest.importorskip("fitz")
+    failing = tmp_path / "private_folder" / "boom.pdf"
+    jobs = load_jobs()
+    real_screen_one = screen_one
+
+    def flaky(path, jobs=None, *, project_scorer=None):
+        if Path(path).name == "boom.pdf":
+            raise RuntimeError("Internal detail: x")
+        return real_screen_one(path, jobs, project_scorer=project_scorer)
+
+    with patch("app.screen.screen_one", side_effect=flaky) as run:
+        records = screen_many([NORMAL, failing, EMPTY], jobs, max_workers=3)
+
+    assert run.call_count == 3
+    assert [record.source_name for record in records] == [NORMAL.name, "boom.pdf", EMPTY.name]
+    assert [record.finalized.reason_code for record in records] == ["", "BATCH_ITEM_ERROR", "EMPTY"]
+    assert "private_folder" not in json.dumps([r.as_dict() for r in records], ensure_ascii=False)
+
+
+@pytest.mark.parametrize("workers", [0, -1, 17, "4", None, 2.5])
+def test_invalid_worker_bounds_are_rejected(workers):
+    with pytest.raises(ValueError):
+        screen_many([NORMAL], max_workers=workers)

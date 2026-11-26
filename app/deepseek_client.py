@@ -144,7 +144,7 @@ class DeepSeekClient:
                 transient = exc.status in (408, 429, 500, 502, 503, 504) or exc.code == "NETWORK_ERROR"
                 if not transient or attempt or self.requests >= self.max_requests:
                     raise
-                sleep(0.5)
+                sleep(_retry_delay(attempt, exc.status))
         raise AssertionError("request loop must return or raise")
 
     def _request(self, request: Request) -> Completion:
@@ -185,3 +185,10 @@ class DeepSeekClient:
 
 def _token_count(value: object) -> Optional[int]:
     return value if type(value) is int and value >= 0 else None
+
+
+def _retry_delay(attempt: int, status: Optional[int]) -> float:
+    """Exponential backoff for rate limiting; other transient errors stay fixed."""
+    if status == 429:
+        return min(1.0 * (2 ** attempt), 8.0)
+    return 0.5

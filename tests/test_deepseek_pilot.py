@@ -63,6 +63,40 @@ class DeepSeekTests(unittest.TestCase):
                 client.complete("片段", "岗位")
             self.assertEqual(send.call_count, 2)
 
+    def test_rate_limit_backoff_is_exponential_and_other_transients_stay_fixed(self):
+        sleeps = []
+        client = DeepSeekClient(DeepSeekConfig("local-stub"), max_requests=2)
+        with patch.object(client._opener, "open", side_effect=[http_error(429), reply("{}")]), patch(
+            "app.deepseek_client.sleep", side_effect=sleeps.append
+        ):
+            client.complete("片段", "岗位")
+            self.assertEqual(sleeps, [1.0])
+
+        sleeps.clear()
+        client = DeepSeekClient(DeepSeekConfig("local-stub"), max_requests=2)
+        with patch.object(client._opener, "open", side_effect=[http_error(500), reply("{}")]), patch(
+            "app.deepseek_client.sleep", side_effect=sleeps.append
+        ):
+            client.complete("片段", "岗位")
+            self.assertEqual(sleeps, [0.5])
+
+        sleeps.clear()
+        client = DeepSeekClient(DeepSeekConfig("local-stub"), max_requests=3)
+        with patch.object(client._opener, "open", side_effect=[http_error(429), http_error(429)]), patch(
+            "app.deepseek_client.sleep", side_effect=sleeps.append
+        ):
+            with self.assertRaisesRegex(DeepSeekError, "HTTP_ERROR"):
+                client.complete("片段", "岗位")
+            self.assertEqual(sleeps, [1.0])
+
+    def test_retry_delay_schedule_is_exponential_and_capped(self):
+        from app.deepseek_client import _retry_delay
+
+        self.assertEqual([_retry_delay(attempt, 429) for attempt in range(4)], [1.0, 2.0, 4.0, 8.0])
+        self.assertEqual(_retry_delay(5, 429), 8.0)
+        self.assertEqual(_retry_delay(0, 500), 0.5)
+        self.assertEqual(_retry_delay(0, None), 0.5)
+
     def test_auth_and_redirect_errors_never_retry(self):
         for status in (302, 401, 402):
             with self.subTest(status=status), patch.object(
